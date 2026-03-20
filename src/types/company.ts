@@ -29,6 +29,7 @@ export interface CompanyProfile {
   // 3. Contact Details (Primary & Secondary)
   email?: string;
   phone?: string;
+  phonepe_url?: string;
   secondary_emails?: { label: string; value: string }[];
   secondary_phones?: { label: string; value: string }[];
 

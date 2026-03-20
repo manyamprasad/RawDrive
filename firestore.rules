@@ -129,13 +129,14 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidUser(data) {
-      return hasRequiredFields(['uid', 'email', 'role', 'storageUsed', 'createdAt']) &&
-             hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'role', 'storageUsed', 'createdAt']) &&
+      return hasRequiredFields(['uid', 'email', 'role', 'storageUsed', 'storageLimit', 'createdAt']) &&
+             hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'role', 'storageUsed', 'storageLimit', 'createdAt', 'phone', 'state', 'city', 'country']) &&
              data.uid == request.auth.uid &&
              isValidEmail(data.email) &&
              data.role in ['photographer', 'admin'] &&
              data.storageUsed is number &&
              data.storageUsed >= 0 &&
+             data.storageLimit is number &&
              data.createdAt is string;
     }
 
@@ -195,8 +196,10 @@ service cloud.firestore {
     }
 
     function isValidProfile(data) {
-      return hasRequiredFields(['user_id']) &&
-             data.user_id == request.auth.uid;
+      return hasRequiredFields(['user_id', 'updated_at']) &&
+             hasOnlyAllowedFields(['user_id', 'first_name', 'last_name', 'display_name', 'profile_title', 'tagline', 'bio', 'slug', 'email', 'phone', 'website', 'location', 'google_maps_url', 'address_line1', 'address_line2', 'city', 'state', 'postal_code', 'country', 'is_public', 'show_qr_code', 'show_vcard', 'indexable', 'custom_domain', 'custom_domain_enabled', 'brand_color', 'background_theme', 'avatar_url', 'logo_url', 'favicon_url', 'categories', 'socials', 'service_areas', 'custom_links', 'meta_title', 'meta_description', 'meta_keywords', 'pronouns', 'language', 'timezone', 'tags', 'consent_marketing', 'privacy_settings', 'created_at', 'updated_at', 'featured_gallery_id', 'spotify_playlist_id', 'name']) &&
+             data.user_id == request.auth.uid &&
+             data.updated_at is string;
     }
 
     // ===============================================================

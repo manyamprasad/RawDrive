@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, query, where, onSnapshot, orderBy, getDocs, deleteDoc, updateDoc, doc, increment } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, getDocs, deleteDoc, updateDoc, doc, increment, setDoc } from 'firebase/firestore';
 import { db } from '@/firebase';
 import { LazyImage } from '@/components/LazyImage';
 import RtspPlayer from '@/components/RtspPlayer';
@@ -63,6 +63,14 @@ export default function Dashboard() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isAddingStream, setIsAddingStream] = useState(false);
   const [newStream, setNewStream] = useState({ name: '', rtspUrl: '', eventId: '' });
+  const [r2Configured, setR2Configured] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch('/api/health')
+      .then(res => res.json())
+      .then(data => setR2Configured(data.r2Configured))
+      .catch(() => setR2Configured(false));
+  }, []);
 
   const handleStorageSync = async () => {
     if (!user) return;
@@ -171,7 +179,6 @@ export default function Dashboard() {
 
     try {
       const streamId = Math.random().toString(36).substring(2, 15);
-      const { setDoc } = await import('firebase/firestore');
       await setDoc(doc(db, 'live_streams', streamId), {
         id: streamId,
         photographerId: user.uid,
@@ -426,6 +433,21 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto">
         <div className="p-8 max-w-6xl mx-auto">
+          {r2Configured === false && (
+            <div className="mb-8 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-4 text-amber-600 dark:text-amber-400">
+              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                <HardDrive className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm mb-1">Cloudflare R2 Not Configured</h3>
+                <p className="text-xs leading-relaxed opacity-80">
+                  Your storage is currently running in local fallback mode. Files will be lost if the server restarts. 
+                  Please configure <strong>CF_ACCOUNT_ID</strong>, <strong>R2_ACCESS_KEY_ID</strong>, <strong>R2_SECRET_ACCESS_KEY</strong>, and <strong>R2_BUCKET_NAME</strong> in your environment variables.
+                </p>
+              </div>
+            </div>
+          )}
+
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-12">
             <div>
               <h1 className="text-3xl font-bold tracking-tight mb-1">

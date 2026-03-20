@@ -503,8 +503,8 @@ async function startServer() {
   });
 
   app.get('/api/streams/:id/proxy', (req, res) => {
-    // This endpoint will be used by the frontend to get the websocket URL
-    res.json({ success: true, wsUrl: `ws://${req.headers.host}/api/streams/${req.params.id}` });
+    // This endpoint will be used by the frontend to get the websocket path
+    res.json({ success: true, wsPath: `/api/streams/${req.params.id}` });
   });
 
   // Image Proxy Endpoint to avoid CORS issues during bulk download

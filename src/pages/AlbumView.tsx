@@ -84,6 +84,22 @@ export default function AlbumView() {
   const { isInstallable, promptInstall } = usePWAInstall();
 
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressRef = useRef(false);
+
+  const handlePointerDown = (photoId: string) => {
+    isLongPressRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      setSelectedPhotoIds(prev => prev.includes(photoId) ? prev.filter(id => id !== photoId) : [...prev, photoId]);
+    }, 500);
+  };
+
+  const handlePointerUp = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+  };
 
   const togglePhotoSelection = (e: React.MouseEvent, photoId: string) => {
     e.stopPropagation();
@@ -905,7 +921,16 @@ export default function AlbumView() {
               transition={{ delay: i * 0.05 }}
               className="relative group"
             >
-              <GlassCard intensity="low" className={cn("group relative overflow-hidden rounded-2xl bg-white/60 dark:bg-zinc-900/40 cursor-pointer h-full transition-all", selectedPhotoIds.includes(photo.id) ? "ring-2 ring-blue-500 shadow-lg" : "hover:shadow-md")} onClick={() => setSelectedPhotoIndex(i)}>
+              <GlassCard 
+                intensity="low" 
+                className={cn("group relative overflow-hidden rounded-2xl bg-white/60 dark:bg-zinc-900/40 cursor-pointer h-full transition-all", selectedPhotoIds.includes(photo.id) ? "ring-2 ring-blue-500 shadow-lg" : "hover:shadow-md")} 
+                onClick={() => {
+                  if (!isLongPressRef.current) setSelectedPhotoIndex(i);
+                }}
+                onPointerDown={() => handlePointerDown(photo.id)}
+                onPointerUp={handlePointerUp}
+                onPointerLeave={handlePointerUp}
+              >
                 <button 
                   onClick={(e) => togglePhotoSelection(e, photo.id)}
                   className={cn(

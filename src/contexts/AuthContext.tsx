@@ -1,5 +1,14 @@
 import React, { Component, createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { 
+  User, 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signOut,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile
+} from 'firebase/auth';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import { onSnapshot, doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -12,6 +21,10 @@ export interface UserProfile {
   storageUsed: number;
   storageLimit: number;
   createdAt: string;
+  phone?: string;
+  state?: string;
+  city?: string;
+  country?: string;
 }
 
 interface AuthContextType {
@@ -19,6 +32,8 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
+  registerWithEmail: (email: string, pass: string, name: string, phone: string, state: string, city: string, country: string) => Promise<void>;
+  loginWithEmail: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -27,6 +42,8 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   signInWithGoogle: async () => {},
+  registerWithEmail: async () => {},
+  loginWithEmail: async () => {},
   logout: async () => {},
 });
 
@@ -152,6 +169,72 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const registerWithEmail = async (email: string, pass: string, name: string, phone: string, state: string, city: string, country: string) => {
+    try {
+      const { user } = await createUserWithEmailAndPassword(auth, email, pass);
+      await updateProfile(user, { displayName: name });
+      
+      const userRef = doc(db, 'users', user.uid);
+      const newProfile: UserProfile = {
+        uid: user.uid,
+        email: user.email,
+        displayName: name,
+        photoURL: null,
+        role: 'photographer',
+        storageUsed: 0,
+        storageLimit: 10 * 1024 * 1024 * 1024,
+        createdAt: new Date().toISOString(),
+        phone,
+        state,
+        city,
+        country
+      };
+      await setDoc(userRef, newProfile);
+
+      // Also create a photographer profile document
+      const profileRef = doc(db, 'profiles', user.uid);
+      const photographerProfile = {
+        user_id: user.uid,
+        display_name: name,
+        email: user.email,
+        phone: phone,
+        state: state,
+        city: city,
+        country: country,
+        location: `${city}, ${state}, ${country}`,
+        is_public: true,
+        slug: name.toLowerCase().replace(/\s+/g, '-') + '-' + Math.random().toString(36).substring(2, 6),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        privacy_settings: {
+          show_email: false,
+          show_phone: false,
+          show_website: false,
+          show_booking: false,
+          show_socials: false,
+          show_location: true,
+          show_avatar: true,
+          show_bio: true,
+          show_display_name: true,
+        }
+      };
+      await setDoc(profileRef, photographerProfile);
+
+    } catch (error) {
+      console.error("Error registering with email", error);
+      throw error;
+    }
+  };
+
+  const loginWithEmail = async (email: string, pass: string) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+    } catch (error) {
+      console.error("Error logging in with email", error);
+      throw error;
+    }
+  };
+
   const logout = async () => {
     try {
       await signOut(auth);
@@ -161,7 +244,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, registerWithEmail, loginWithEmail, logout }}>
       <ErrorBoundary>
         {!loading && children}
       </ErrorBoundary>

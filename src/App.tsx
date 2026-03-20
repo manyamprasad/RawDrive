@@ -20,6 +20,7 @@ import ProfileSettings from './pages/ProfileSettings';
 import PublicProfile from './pages/PublicProfile';
 import CompanySettings from './pages/CompanySettings';
 import PublicCompany from './pages/PublicCompany';
+import AdminDashboard from './pages/AdminDashboard';
 import { Chatbot } from './components/Chatbot';
 
 export default function App() {
@@ -35,6 +36,7 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/profile" element={<ProfileSettings />} />
             <Route path="/dashboard/company" element={<CompanySettings />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/event/:id" element={<EventView />} />
             <Route path="/album/:id" element={<AlbumView />} />
             <Route path="/find-me/:albumId" element={<FaceSearch />} />

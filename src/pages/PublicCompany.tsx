@@ -22,13 +22,22 @@ export default function PublicCompany() {
 
   useEffect(() => {
     const fetchProfile = async () => {
+      console.log("Fetching profile for slug:", slug);
       if (!slug) return;
       try {
         const q = query(collection(db, 'companies'), where('slug', '==', slug));
         const querySnapshot = await getDocs(q);
+        console.log("Query snapshot empty:", querySnapshot.empty);
+        
+        if (querySnapshot.empty) {
+          const allCompaniesQuery = query(collection(db, 'companies'));
+          const allCompaniesSnapshot = await getDocs(allCompaniesQuery);
+          console.log("All companies:", allCompaniesSnapshot.docs.map(d => d.data()));
+        }
         
         if (!querySnapshot.empty) {
           const profileData = querySnapshot.docs[0].data() as CompanyProfile;
+          console.log("Profile data:", profileData);
           setProfile(profileData);
           
           // Fetch public events
@@ -109,7 +118,7 @@ export default function PublicCompany() {
               <ChevronLeft className="w-5 h-5" />
             </Button>
             <div className="flex items-center gap-2">
-              {profile.logo_url && visibility.logo_url === true ? (
+              {profile.logo_url ? (
                 <div className="w-8 h-8 rounded-lg overflow-hidden shadow-lg">
                   <LazyImage photoKey={profile.logo_url} alt="Logo" className="w-full h-full object-cover" />
                 </div>
@@ -122,7 +131,10 @@ export default function PublicCompany() {
                 </div>
               )}
               <span className="font-bold text-lg hidden sm:block">
-                {visibility.name === true && profile.name ? profile.name : 'Studio'}
+                {profile.name || 'Studio'}
+                {profile.tagline && (
+                  <span className="text-sm font-normal text-zinc-500 ml-2 hidden md:inline">| {profile.tagline}</span>
+                )}
               </span>
             </div>
           </div>
@@ -164,7 +176,7 @@ export default function PublicCompany() {
       {/* Hero Section */}
       <div className="relative h-[40vh] min-h-[300px] flex items-end">
         <div className="absolute inset-0 z-0">
-          {profile.logo_url && visibility.logo_url === true ? (
+          {profile.logo_url ? (
             <>
               <LazyImage 
                 photoKey={profile.logo_url} 
@@ -186,19 +198,17 @@ export default function PublicCompany() {
           >
             <div className="flex items-center gap-6 mb-6">
               <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl overflow-hidden border-4 border-white dark:border-zinc-900 shadow-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
-                {profile.logo_url && visibility.logo_url === true ? (
+                {profile.logo_url ? (
                   <LazyImage photoKey={profile.logo_url} alt="Logo" className="w-full h-full object-contain p-2" />
                 ) : (
                   <Building2 className="w-10 h-10 sm:w-12 sm:h-12 text-zinc-400 dark:text-zinc-500" />
                 )}
               </div>
               <div>
-                {visibility.name === true && (
-                  <h1 className="text-3xl sm:text-5xl font-bold tracking-tight mb-2 text-zinc-900 dark:text-white">
-                    {profile.name || 'Studio'}
-                  </h1>
-                )}
-                {profile.tagline && visibility.tagline === true && (
+                <h1 className="text-3xl sm:text-5xl font-bold tracking-tight mb-2 text-zinc-900 dark:text-white">
+                  {profile.name || 'Studio'}
+                </h1>
+                {profile.tagline && (
                   <p className="text-lg sm:text-xl text-zinc-600 dark:text-zinc-300 font-medium">
                     {profile.tagline}
                   </p>
@@ -207,7 +217,7 @@ export default function PublicCompany() {
             </div>
 
             <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400">
-              {profile.address && visibility.address === true && (
+              {profile.address && (
                 profile.google_maps_url ? (
                   <a href={normalizeUrl(profile.google_maps_url)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-white/50 dark:bg-white/5 px-3 py-1.5 rounded-full border border-zinc-200 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 transition-colors backdrop-blur-md">
                     <MapPin className="w-4 h-4" /> {profile.address}
@@ -218,7 +228,7 @@ export default function PublicCompany() {
                   </span>
                 )
               )}
-              {profile.website && visibility.website === true && (
+              {profile.website && (
                 <a href={normalizeUrl(profile.website)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-white/50 dark:bg-white/5 px-3 py-1.5 rounded-full border border-zinc-200 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 transition-colors backdrop-blur-md">
                   <Globe className="w-4 h-4" /> Website
                 </a>
@@ -233,7 +243,7 @@ export default function PublicCompany() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column: Details */}
           <div className="lg:col-span-2 space-y-8">
-            {profile.address_line1 && visibility.address_details === true && (
+            {profile.address_line1 && (
               <section className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-3xl p-8 shadow-sm">
                 <h2 className="text-xl font-semibold mb-4 text-zinc-900 dark:text-white">Location</h2>
                 <div className="flex items-start gap-3 text-zinc-700 dark:text-zinc-300">
@@ -259,7 +269,7 @@ export default function PublicCompany() {
               <h3 className="text-lg font-semibold mb-6 text-zinc-900 dark:text-white">Contact Us</h3>
               
               <div className="space-y-3">
-                {profile.email && visibility.email === true && (
+                {profile.email && (
                   <a href={`mailto:${profile.email}`} className="block">
                     <Button className="w-full py-6 rounded-2xl font-semibold text-white shadow-md transition-transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2" style={{ backgroundColor: brandColor }}>
                       <Mail className="w-5 h-5" /> Email Us
@@ -267,27 +277,34 @@ export default function PublicCompany() {
                   </a>
                 )}
                 
-                {profile.phone && visibility.phone === true && (
+                {profile.phone && (
                   <a href={`tel:${profile.phone}`} className="block">
                     <Button variant="outline" className="w-full py-6 rounded-2xl font-semibold bg-white/50 dark:bg-zinc-800/50 backdrop-blur-md border-zinc-200 dark:border-zinc-700 transition-transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2">
                       <Phone className="w-5 h-5" /> Call Us
                     </Button>
                   </a>
                 )}
+                {profile.phonepe_url && (
+                  <a href={profile.phonepe_url} target="_blank" rel="noopener noreferrer" className="block">
+                    <Button variant="outline" className="w-full py-6 rounded-2xl font-semibold bg-white/50 dark:bg-zinc-800/50 backdrop-blur-md border-zinc-200 dark:border-zinc-700 transition-transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2">
+                      <span className="font-bold">Pay via PhonePe</span>
+                    </Button>
+                  </a>
+                )}
               </div>
 
               {/* Secondary Contacts */}
-              {((profile.secondary_emails && profile.secondary_emails.length > 0 && visibility.secondary_emails === true) || 
-                (profile.secondary_phones && profile.secondary_phones.length > 0 && visibility.secondary_phones === true)) && (
+              {((profile.secondary_emails && profile.secondary_emails.length > 0) || 
+                (profile.secondary_phones && profile.secondary_phones.length > 0)) && (
                 <div className="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
-                  {profile.secondary_emails && visibility.secondary_emails === true && profile.secondary_emails.map((email, idx) => (
+                  {profile.secondary_emails && profile.secondary_emails.map((email, idx) => (
                     <a key={`email-${idx}`} href={`mailto:${email.value}`} className="block">
                       <div className="w-full p-3 rounded-xl font-medium text-zinc-700 dark:text-zinc-300 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex items-center gap-3 text-sm">
                         <Mail className="w-4 h-4 text-zinc-500" /> {email.label || email.value}
                       </div>
                     </a>
                   ))}
-                  {profile.secondary_phones && visibility.secondary_phones === true && profile.secondary_phones.map((phone, idx) => (
+                  {profile.secondary_phones && profile.secondary_phones.map((phone, idx) => (
                     <a key={`phone-${idx}`} href={`tel:${phone.value}`} className="block">
                       <div className="w-full p-3 rounded-xl font-medium text-zinc-700 dark:text-zinc-300 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex items-center gap-3 text-sm">
                         <Phone className="w-4 h-4 text-zinc-500" /> {phone.label || phone.value}
@@ -299,7 +316,7 @@ export default function PublicCompany() {
             </section>
 
             {/* Links */}
-            {profile.custom_links && profile.custom_links.length > 0 && visibility.custom_links === true && (
+            {profile.custom_links && profile.custom_links.length > 0 && (
               <section className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-3xl p-6 shadow-sm">
                 <h3 className="text-lg font-semibold mb-4 text-zinc-900 dark:text-white">Links</h3>
                 <div className="space-y-3">
@@ -326,42 +343,42 @@ export default function PublicCompany() {
               <section className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-3xl p-6 shadow-sm">
                 <h3 className="text-lg font-semibold mb-4 text-zinc-900 dark:text-white">Social Media</h3>
                 <div className="flex flex-wrap gap-3">
-                  {profile.socials.instagram && visibility.socials?.instagram === true && (
+                  {profile.socials.instagram && (
                     <a href={normalizeSocialUrl('instagram', profile.socials.instagram)} target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-black/10 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white transition-all">
                       <Instagram className="w-5 h-5" />
                     </a>
                   )}
-                  {profile.socials.twitter && visibility.socials?.twitter === true && (
+                  {profile.socials.twitter && (
                     <a href={normalizeSocialUrl('twitter', profile.socials.twitter)} target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-black/10 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white transition-all">
                       <Twitter className="w-5 h-5" />
                     </a>
                   )}
-                  {profile.socials.facebook && visibility.socials?.facebook === true && (
+                  {profile.socials.facebook && (
                     <a href={normalizeSocialUrl('facebook', profile.socials.facebook)} target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-black/10 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white transition-all">
                       <Facebook className="w-5 h-5" />
                     </a>
                   )}
-                  {profile.socials.linkedin && visibility.socials?.linkedin === true && (
+                  {profile.socials.linkedin && (
                     <a href={normalizeSocialUrl('linkedin', profile.socials.linkedin)} target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-black/10 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white transition-all">
                       <Linkedin className="w-5 h-5" />
                     </a>
                   )}
-                  {profile.socials.youtube && visibility.socials?.youtube === true && (
+                  {profile.socials.youtube && (
                     <a href={normalizeSocialUrl('youtube', profile.socials.youtube)} target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-black/10 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white transition-all">
                       <Youtube className="w-5 h-5" />
                     </a>
                   )}
-                  {profile.socials.tiktok && visibility.socials?.tiktok === true && (
+                  {profile.socials.tiktok && (
                     <a href={normalizeSocialUrl('tiktok', profile.socials.tiktok)} target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-black/10 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white transition-all">
                       <Video className="w-5 h-5" />
                     </a>
                   )}
-                  {profile.socials.pinterest && visibility.socials?.pinterest === true && (
+                  {profile.socials.pinterest && (
                     <a href={normalizeSocialUrl('pinterest', profile.socials.pinterest)} target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-black/10 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white transition-all">
                       <ImageIcon className="w-5 h-5" />
                     </a>
                   )}
-                  {profile.socials.whatsapp && visibility.socials?.whatsapp === true && (
+                  {profile.socials.whatsapp && (
                     <a href={normalizeSocialUrl('whatsapp', profile.socials.whatsapp)} target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-black/10 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white transition-all">
                       <MessageCircle className="w-5 h-5" />
                     </a>

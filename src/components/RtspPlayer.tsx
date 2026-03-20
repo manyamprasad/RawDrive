@@ -21,16 +21,17 @@ const RtspPlayer: React.FC<RtspPlayerProps> = ({ streamId, rtspUrl, className })
         setIsLoading(true);
         setError(null);
 
-        // Get the websocket URL from our proxy endpoint
+        // Get the websocket path from our proxy endpoint
         const response = await fetch(`/api/streams/${streamId}/proxy`);
         const data = await response.json();
 
         if (!data.success) {
-          throw new Error(data.error || 'Failed to get proxy URL');
+          throw new Error(data.error || 'Failed to get proxy path');
         }
 
-        // Append the rtspUrl as a query parameter so the server knows what to proxy
-        const wsUrl = `${data.wsUrl}?url=${encodeURIComponent(rtspUrl)}`;
+        // Construct the full WebSocket URL with the correct protocol
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}${data.wsPath}?url=${encodeURIComponent(rtspUrl)}`;
 
         // Initialize JSMpeg player
         // jsmpeg-player's VideoElement takes the container and the websocket URL

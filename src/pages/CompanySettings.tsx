@@ -43,6 +43,7 @@ export default function CompanySettings() {
     phone: '',
     secondary_emails: [],
     secondary_phones: [],
+    phonepe_url: '',
     address: '',
     google_maps_url: '',
     address_line1: '',
@@ -507,6 +508,16 @@ export default function CompanySettings() {
                             className="bg-zinc-50 dark:bg-zinc-900"
                           />
                         </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-1.5">PhonePe Payment Link</label>
+                          <Input 
+                            name="phonepe_url" 
+                            value={profile.phonepe_url || ''} 
+                            onChange={handleChange} 
+                            placeholder="https://phon.pe/..." 
+                            className="bg-zinc-50 dark:bg-zinc-900"
+                          />
+                        </div>
                       </div>
                       
                       {/* Secondary Contacts could be added here with a dynamic list builder, keeping it simple for now */}
@@ -568,8 +579,7 @@ export default function CompanySettings() {
                           <Input name="postal_code" value={profile.postal_code || ''} onChange={handleChange} placeholder="ZIP / Postal Code" className="bg-zinc-50 dark:bg-zinc-900" />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium mb-1.5">Country</label>
-                          <Input name="country" value={profile.country || ''} onChange={handleChange} placeholder="Country" className="bg-zinc-50 dark:bg-zinc-900" />
+                          <Input disabled name="country" value="India" className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 cursor-not-allowed" />
                         </div>
                       </div>
                     </div>

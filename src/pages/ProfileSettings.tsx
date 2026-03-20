@@ -13,6 +13,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { LazyImage } from '@/components/LazyImage';
 import { AvatarCropper } from '@/components/AvatarCropper';
 import { getThemeClass, THEME_TEMPLATES } from '@/lib/theme';
+import { INDIAN_STATES_CITIES } from '@/constants/locations';
 import { cn } from '@/lib/utils';
 
 type TabId = 'identity' | 'branding' | 'contact' | 'location' | 'seo' | 'privacy' | 'extras';
@@ -169,16 +170,6 @@ export default function ProfileSettings() {
     setProfile(prev => ({ ...prev, [field]: arr }));
   };
 
-  const handlePrivacyChange = (field: keyof NonNullable<PhotographerProfile['privacy_settings']>) => {
-    setProfile(prev => ({
-      ...prev,
-      privacy_settings: {
-        ...(prev.privacy_settings || {}),
-        [field]: !(prev.privacy_settings?.[field] ?? false)
-      }
-    }));
-  };
-
   const handleSocialPrivacyChange = (platform: string) => {
     setProfile(prev => ({
       ...prev,
@@ -303,8 +294,6 @@ export default function ProfileSettings() {
     { id: 'branding', label: 'Branding', icon: Palette },
     { id: 'contact', label: 'Contact & Social', icon: LinkIcon },
     { id: 'location', label: 'Location', icon: MapPin },
-    { id: 'seo', label: 'SEO & Content', icon: Search },
-    { id: 'privacy', label: 'Privacy', icon: Shield },
     { id: 'extras', label: 'Extras', icon: Settings },
   ] as const;
 
@@ -703,11 +692,32 @@ export default function ProfileSettings() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">City</label>
-                        <Input name="city" value={profile.city || ''} onChange={handleChange} placeholder="Essen" />
+                        <select
+                          name="city"
+                          value={profile.city || ''}
+                          onChange={handleChange}
+                          disabled={!profile.state}
+                          className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500"
+                        >
+                          <option value="">Select City</option>
+                          {profile.state && INDIAN_STATES_CITIES[profile.state]?.map(city => (
+                            <option key={city} value={city}>{city}</option>
+                          ))}
+                        </select>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">State / Region</label>
-                        <Input name="state" value={profile.state || ''} onChange={handleChange} placeholder="North Rhine-Westphalia" />
+                        <select
+                          name="state"
+                          value={profile.state || ''}
+                          onChange={handleChange}
+                          className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500"
+                        >
+                          <option value="">Select State</option>
+                          {Object.keys(INDIAN_STATES_CITIES).map(state => (
+                            <option key={state} value={state}>{state}</option>
+                          ))}
+                        </select>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Postal Code</label>
@@ -715,7 +725,7 @@ export default function ProfileSettings() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Country</label>
-                        <Input name="country" value={profile.country || ''} onChange={handleChange} placeholder="Germany" />
+                        <Input name="country" value={profile.country || ''} onChange={handleChange} placeholder="India" />
                       </div>
                     </div>
 
@@ -790,83 +800,6 @@ export default function ProfileSettings() {
                       <div className="space-y-2">
                         <label className="text-xs font-medium text-zinc-500">OG Description</label>
                         <Input name="og_description" value={profile.og_description || ''} onChange={handleChange} />
-                      </div>
-                    </div>
-                  </GlassCard>
-                )}
-
-                {/* PRIVACY */}
-                {activeTab === 'privacy' && (
-                  <GlassCard intensity="low" className="p-6 space-y-6 bg-white dark:bg-zinc-900/50">
-                    <h2 className="text-xl font-semibold flex items-center gap-2">
-                      <Shield className="w-5 h-5 text-indigo-500" /> Privacy Controls
-                    </h2>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                      Choose which details are visible on your public profile. By default, all details are hidden to protect your privacy.
-                    </p>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {([] as { id: keyof NonNullable<PhotographerProfile['privacy_settings']>, label: string, desc: string }[]).concat([
-                        { id: 'show_first_name', label: 'First Name', desc: 'Display your first name' },
-                        { id: 'show_last_name', label: 'Last Name', desc: 'Display your last name' },
-                        { id: 'show_display_name', label: 'Display Name', desc: 'Show your public display name' },
-                        { id: 'show_profile_title', label: 'Profile Title', desc: 'Show your professional title' },
-                        { id: 'show_tagline', label: 'Tagline', desc: 'Show your tagline/slogan' },
-                        { id: 'show_avatar', label: 'Profile Photo', desc: 'Display your avatar' },
-                        { id: 'show_logo', label: 'Logo', desc: 'Display your brand logo' },
-                        { id: 'show_bio', label: 'Biography', desc: 'Show your bio' },
-                        { id: 'show_categories', label: 'Categories', desc: 'Show your photography categories' },
-                        { id: 'show_email', label: 'Primary Email', desc: 'Allow clients to see your email' },
-                        { id: 'show_phone', label: 'Primary Phone', desc: 'Allow clients to see your phone number' },
-                        { id: 'show_secondary_emails', label: 'Secondary Emails', desc: 'Show secondary email addresses' },
-                        { id: 'show_secondary_phones', label: 'Secondary Phones', desc: 'Show secondary phone numbers' },
-                        { id: 'show_website', label: 'Website Link', desc: 'Display your external website' },
-                        { id: 'show_booking', label: 'Booking Calendar', desc: 'Show your booking link' },
-                        { id: 'show_socials', label: 'Social Media', desc: 'Display your social media links' },
-                        { id: 'show_location', label: 'General Location', desc: 'Show your general location/city' },
-                        { id: 'show_address_details', label: 'Detailed Address', desc: 'Show full physical address' },
-                        { id: 'show_service_areas', label: 'Service Areas', desc: 'Show areas you serve' },
-                        { id: 'show_custom_links', label: 'Custom Links', desc: 'Display your custom links' },
-                        { id: 'show_pronouns', label: 'Pronouns', desc: 'Show your pronouns' },
-                        { id: 'show_language', label: 'Languages', desc: 'Show languages you speak' },
-                        { id: 'show_timezone', label: 'Timezone', desc: 'Show your timezone' },
-                        { id: 'show_tags', label: 'Tags', desc: 'Show your profile tags' },
-                      ]).map((item) => (
-                        <div key={item.id} className="flex items-center justify-between p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
-                          <div>
-                            <h3 className="font-medium text-sm">{item.label}</h3>
-                            <p className="text-xs text-zinc-500">{item.desc}</p>
-                          </div>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              checked={profile.privacy_settings?.[item.id] as boolean ?? false} 
-                              onChange={() => handlePrivacyChange(item.id)} 
-                              className="sr-only peer" 
-                            />
-                            <div className="w-9 h-5 bg-zinc-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-zinc-600 peer-checked:bg-indigo-600"></div>
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800">
-                      <h3 className="text-sm font-medium mb-4">Social Media Visibility</h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {['instagram', 'facebook', 'twitter', 'linkedin', 'youtube', 'tiktok', 'pinterest', 'whatsapp'].map(platform => (
-                          <div key={platform} className="flex items-center justify-between p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
-                            <span className="text-sm font-medium capitalize">{platform}</span>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input 
-                                type="checkbox" 
-                                checked={profile.privacy_settings?.socials?.[platform as keyof typeof profile.privacy_settings.socials] ?? false} 
-                                onChange={() => handleSocialPrivacyChange(platform)} 
-                                className="sr-only peer" 
-                              />
-                              <div className="w-9 h-5 bg-zinc-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-zinc-600 peer-checked:bg-indigo-600"></div>
-                            </label>
-                          </div>
-                        ))}
                       </div>
                     </div>
                   </GlassCard>
