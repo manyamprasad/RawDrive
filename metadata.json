@@ -1,0 +1,7 @@
+{
+  "name": "RawDrive",
+  "description": "A premium professional photo gallery and sharing platform designed exclusively for Indian photographers and customers.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

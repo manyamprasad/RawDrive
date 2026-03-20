@@ -1,0 +1,153 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A photographer or studio owner using RawDrive.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string", "format": "uri" },
+        "role": { "type": "string", "enum": ["photographer", "admin"] },
+        "storageUsed": { "type": "number", "description": "Storage used in bytes" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "storageUsed", "createdAt"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "A high-level gallery or event (e.g., Wedding) containing multiple albums.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "photographerId": { "type": "string", "description": "UID of the photographer who owns this event" },
+        "name": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "coverPhotoUrl": { "type": "string", "format": "uri" },
+        "albumCount": { "type": "number" },
+        "isPublic": { "type": "boolean", "description": "Whether the event is accessible via a public link" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "photographerId", "name", "date", "albumCount", "isPublic", "createdAt"]
+    },
+    "Album": {
+      "title": "Album",
+      "description": "A sub-section of an event (e.g., Engagement, Ceremony).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "eventId": { "type": "string", "description": "ID of the parent event" },
+        "photographerId": { "type": "string", "description": "UID of the photographer who owns this album" },
+        "name": { "type": "string" },
+        "photoCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "eventId", "photographerId", "name", "photoCount", "createdAt"]
+    },
+    "Photo": {
+      "title": "Photo",
+      "description": "An individual photo within an album.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "albumId": { "type": "string" },
+        "eventId": { "type": "string" },
+        "photographerId": { "type": "string" },
+        "originalUrl": { "type": "string" },
+        "webpUrl": { "type": "string" },
+        "originalKey": { "type": "string" },
+        "webpKey": { "type": "string" },
+        "size": { "type": "number", "description": "File size in bytes" },
+        "likes": { "type": "number" },
+        "faces": { "type": "array", "items": { "type": "object" } },
+        "uploadedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "albumId", "eventId", "photographerId", "originalKey", "webpKey", "size", "likes", "uploadedAt"]
+    },
+    "Video": {
+      "title": "Video",
+      "description": "A YouTube video within an album.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "albumId": { "type": "string" },
+        "eventId": { "type": "string" },
+        "photographerId": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "uploadedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "albumId", "eventId", "photographerId", "url", "uploadedAt"]
+    },
+    "Profile": {
+      "title": "Photographer Profile",
+      "description": "Public profile for a photographer.",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "first_name": { "type": "string" },
+        "last_name": { "type": "string" },
+        "display_name": { "type": "string" },
+        "tagline": { "type": "string" },
+        "slug": { "type": "string" },
+        "bio": { "type": "string" },
+        "avatar_url": { "type": "string" },
+        "is_public": { "type": "boolean" },
+        "brand_color": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "website": { "type": "string" },
+        "location": { "type": "string" },
+        "city": { "type": "string" },
+        "country": { "type": "string" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["user_id"]
+    },
+    "LiveStream": {
+      "title": "Live Stream",
+      "description": "A live stream associated with an event or photographer.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "photographerId": { "type": "string" },
+        "eventId": { "type": "string" },
+        "name": { "type": "string" },
+        "rtspUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "photographerId", "name", "rtspUrl", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": { "$ref": "#/entities/Profile" },
+      "description": "Stores public photographer profiles."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profiles."
+    },
+    "/events/{eventId}": {
+      "schema": { "$ref": "#/entities/Event" },
+      "description": "Stores high-level events/galleries."
+    },
+    "/albums/{albumId}": {
+      "schema": { "$ref": "#/entities/Album" },
+      "description": "Stores album metadata."
+    },
+    "/photos/{photoId}": {
+      "schema": { "$ref": "#/entities/Photo" },
+      "description": "Stores individual photo metadata."
+    },
+    "/videos/{videoId}": {
+      "schema": { "$ref": "#/entities/Video" },
+      "description": "Stores individual video metadata."
+    },
+    "/live_streams/{streamId}": {
+      "schema": { "$ref": "#/entities/LiveStream" },
+      "description": "Stores live stream metadata."
+    }
+  }
+}

@@ -1,0 +1,269 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string (optional)
+    //   - photoURL: string (optional)
+    //   - role: string (required, 'photographer' or 'admin')
+    //   - storageUsed: number (required)
+    //   - createdAt: string (required)
+    //
+    // Collection: events
+    // Document ID: {eventId}
+    // Fields:
+    //   - id: string (required)
+    //   - photographerId: string (required)
+    //   - name: string (required)
+    //   - date: string (required)
+    //   - coverPhotoUrl: string (optional)
+    //   - albumCount: number (required)
+    //   - isPublic: boolean (required)
+    //   - createdAt: string (required)
+    //
+    // Collection: albums
+    // Document ID: {albumId}
+    // Fields:
+    //   - id: string (required)
+    //   - eventId: string (required)
+    //   - photographerId: string (required)
+    //   - name: string (required)
+    //   - photoCount: number (required)
+    //   - createdAt: string (required)
+    //
+    // Collection: photos
+    // Document ID: {photoId}
+    // Fields:
+    //   - id: string (required)
+    //   - albumId: string (required)
+    //   - eventId: string (required)
+    //   - photographerId: string (required)
+    //   - originalUrl: string (optional)
+    //   - webpUrl: string (optional)
+    //   - originalKey: string (required)
+    //   - webpKey: string (required)
+    //   - size: number (required)
+    //   - likes: number (required)
+    //   - faces: list (optional)
+    //   - uploadedAt: string (required)
+    //
+    // Collection: live_streams
+    // Document ID: {streamId}
+    // Fields:
+    //   - id: string (required)
+    //   - photographerId: string (required)
+    //   - name: string (required)
+    //   - rtspUrl: string (required)
+    //   - status: string (required, 'active' or 'inactive')
+    //   - eventId: string (optional)
+    //   - createdAt: string (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.photographerId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "livestudio649@gmail.com" && request.auth.token.email_verified == true)); // Default admin
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUrl(url) {
+      return url is string &&
+        (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == resource.data.uid;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'email', 'role', 'storageUsed', 'createdAt']) &&
+             hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'role', 'storageUsed', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             data.role in ['photographer', 'admin'] &&
+             data.storageUsed is number &&
+             data.storageUsed >= 0 &&
+             data.createdAt is string;
+    }
+
+    function isValidEvent(data) {
+      return hasRequiredFields(['id', 'photographerId', 'name', 'date', 'albumCount', 'createdAt']) &&
+             hasOnlyAllowedFields(['id', 'photographerId', 'name', 'date', 'coverPhotoUrl', 'coverKey', 'albumCount', 'isPublic', 'createdAt']) &&
+             data.photographerId == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.albumCount is number &&
+             data.albumCount >= 0 &&
+             (!('isPublic' in data) || data.isPublic is bool) &&
+             (!('coverKey' in data) || data.coverKey is string) &&
+             (!('coverPhotoUrl' in data) || data.coverPhotoUrl is string) &&
+             data.createdAt is string;
+    }
+
+    function isValidAlbum(data) {
+      return hasRequiredFields(['id', 'eventId', 'photographerId', 'name', 'photoCount', 'createdAt']) &&
+             hasOnlyAllowedFields(['id', 'eventId', 'photographerId', 'name', 'photoCount', 'createdAt', 'youtubeUrl', 'youtubeUrls', 'coverKey']) &&
+             data.photographerId == request.auth.uid &&
+             data.eventId is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.photoCount is number &&
+             data.photoCount >= 0 &&
+             (!('youtubeUrls' in data) || data.youtubeUrls is list) &&
+             (!('youtubeUrl' in data) || data.youtubeUrl is string) &&
+             (!('coverKey' in data) || data.coverKey is string) &&
+             data.createdAt is string;
+    }
+
+    function isValidPhoto(data) {
+      return hasRequiredFields(['id', 'albumId', 'eventId', 'photographerId', 'originalKey', 'webpKey', 'size', 'likes', 'uploadedAt']) &&
+             hasOnlyAllowedFields(['id', 'albumId', 'eventId', 'photographerId', 'originalUrl', 'webpUrl', 'originalKey', 'webpKey', 'size', 'likes', 'faces', 'uploadedAt']) &&
+             data.photographerId == request.auth.uid &&
+             data.albumId is string &&
+             data.eventId is string &&
+             data.originalKey is string &&
+             data.webpKey is string &&
+             (!('originalUrl' in data) || data.originalUrl is string) &&
+             (!('webpUrl' in data) || data.webpUrl is string) &&
+             data.size is number &&
+             data.size >= 0 &&
+             data.likes is number &&
+             data.likes >= 0 &&
+             (!('faces' in data) || data.faces is list) &&
+             data.uploadedAt is string;
+    }
+
+    function isValidLiveStream(data) {
+      return hasRequiredFields(['id', 'photographerId', 'name', 'rtspUrl', 'status', 'createdAt']) &&
+             hasOnlyAllowedFields(['id', 'photographerId', 'name', 'rtspUrl', 'status', 'createdAt', 'eventId']) &&
+             data.photographerId == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.rtspUrl is string && data.rtspUrl.size() > 0 &&
+             data.status in ['active', 'inactive'] &&
+             data.createdAt is string;
+    }
+
+    function isValidProfile(data) {
+      return hasRequiredFields(['user_id']) &&
+             data.user_id == request.auth.uid;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'photographer';
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role && uidNotModified()) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /profiles/{userId} {
+      allow read: if true;
+      allow create: if isOwner(userId) && isValidProfile(request.resource.data);
+      allow update: if isOwner(userId) && isValidProfile(request.resource.data) && request.resource.data.user_id == resource.data.user_id;
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /companies/{userId} {
+      allow read: if true;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /events/{eventId} {
+      allow read: if resource.data.isPublic == true || isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidEvent(request.resource.data);
+      allow update: if isDocOwner() && isValidEvent(request.resource.data) && request.resource.data.photographerId == resource.data.photographerId;
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /albums/{albumId} {
+      allow read: if true; // In a real app, we'd check parent event visibility
+      allow create: if isAuthenticated() && isValidAlbum(request.resource.data);
+      allow update: if (isDocOwner() || (isAuthenticated() && get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.photographerId == request.auth.uid)) && isValidAlbum(request.resource.data) && request.resource.data.photographerId == resource.data.photographerId;
+      allow delete: if isDocOwner() || (isAuthenticated() && get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.photographerId == request.auth.uid) || isAdmin();
+    }
+
+    match /photos/{photoId} {
+      allow read: if true; // In a real app, we'd check parent event visibility
+      allow create: if isAuthenticated() && isValidPhoto(request.resource.data);
+      allow update: if (isDocOwner() || (isAuthenticated() && get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.photographerId == request.auth.uid)) && isValidPhoto(request.resource.data) && request.resource.data.photographerId == resource.data.photographerId;
+      allow delete: if isDocOwner() || (isAuthenticated() && get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.photographerId == request.auth.uid) || isAdmin();
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isAuthenticated();
+        allow update: if isOwner(resource.data.userId) || isAdmin();
+        allow delete: if isOwner(resource.data.userId) || isAdmin();
+      }
+    }
+
+    match /likes/{likeId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isOwner(resource.data.userId) || isAdmin();
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    match /live_streams/{streamId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidLiveStream(request.resource.data);
+      allow update: if isAuthenticated() && resource.data.photographerId == request.auth.uid && isValidLiveStream(request.resource.data) && request.resource.data.photographerId == resource.data.photographerId;
+      allow delete: if isAuthenticated() && (resource.data.photographerId == request.auth.uid || isAdmin());
+    }
+  }
+}
