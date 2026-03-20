@@ -1,117 +1,86 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Camera, ArrowLeft, Check, Zap } from 'lucide-react';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { Button } from '@/components/ui/Button';
-import { GlassCard } from '@/components/ui/GlassCard';
+import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SEOManager } from '../components/SEOManager';
 
 const PLANS = [
-  { id: 'free', name: "Free", storage: "1 GB", price: "₹0", desc: "Perfect for trying out the platform.", features: ["1 GB Storage", "Basic Gallery Sharing", "Standard Support"] },
-  { id: 'basic', name: "Basic", storage: "10 GB", price: "₹499", desc: "For part-time photographers.", features: ["10 GB Storage", "Custom Watermarks", "Face ID Search (Limited)", "Priority Support"] },
-  { id: 'pro', name: "Pro", storage: "1 TB", price: "₹1,999", desc: "For professional studios.", popular: true, features: ["1 TB Storage", "Unlimited Face ID Search", "Custom Domain", "Client Proofing", "24/7 Phone Support"] },
-  { id: 'business', name: "Business", storage: "10 TB", price: "₹4,999", desc: "For large agencies and teams.", features: ["10 TB Storage", "Team Management", "API Access", "White-label Solution", "Dedicated Account Manager"] },
+  { id: 'starter', name: "Starter", storage: "500GB", price: "₹24", desc: "Perfect for solo photographers beginning their spatial journey.", features: ["5 Active Spatial Galleries", "500GB SSD Storage", "4K Resolution Playback", "Standard CDN Delivery"] },
+  { id: 'pro', name: "Pro", storage: "2TB", price: "₹59", desc: "Advanced delivery for professional studios and high-volume artists.", popular: true, features: ["Unlimited Active Galleries", "2TB Lossless Storage", "8K Spatial Rendering", "Custom Domain & Branding", "Priority 10Gbps CDN"] },
+  { id: 'studio', name: "Studio", storage: "10TB", price: "₹149", desc: "Enterprise-grade infrastructure for large teams and agencies.", features: ["10TB Unified Storage", "Multi-Seat Management", "API for Workflow Integration", "Dedicated Success Manager"] },
 ];
 
 export default function Pricing() {
-  const navigate = useNavigate();
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  const handleUpgrade = (planId: string) => {
-    setSelectedPlan(planId);
-    // Simulate payment process
-    setTimeout(() => {
-      setSuccess(`Successfully upgraded to ${planId.toUpperCase()} plan!`);
-      setTimeout(() => navigate('/dashboard'), 2000);
-    }, 1500);
-  };
+  const [billing, setBilling] = useState<'monthly' | 'yearly'>('yearly');
 
   return (
-    <div className="min-h-screen text-zinc-900 dark:text-zinc-50 font-sans pb-24">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/40 dark:bg-zinc-950/40 backdrop-blur-2xl border-b border-white/20 dark:border-zinc-800/50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/dashboard" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
-            <ArrowLeft className="w-5 h-5" /> Back to Dashboard
-          </Link>
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                <Camera className="text-white w-4 h-4" />
-              </div>
-              <span className="font-bold text-lg hidden sm:block">RawDrive</span>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-[#030406] text-white font-sans pb-24">
+      <SEOManager 
+        title="Pricing - RawDrive"
+        description="Plans for every stage of your craft. Choose the scale that fits your studio."
+        schema={{}}
+      />
+      
+      {/* Ambient Background */}
+      <div className="fixed inset-0 z-0 bg-[url('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2940&auto=format&fit=crop')] bg-cover bg-center">
+        <div className="absolute inset-0 bg-[#030406]/85 backdrop-blur-[120px]" />
+      </div>
 
-      <main className="max-w-7xl mx-auto px-6 mt-16">
-        {success && (
-          <div className="mb-8 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-600 dark:text-emerald-400 text-sm text-center max-w-2xl mx-auto">
-            {success}
-          </div>
-        )}
+      <nav className="relative z-10 w-full p-6 flex justify-between items-center">
+        <Link to="/" className="text-xl font-semibold flex items-center gap-3">
+          <div className="w-7 h-7 bg-white rounded-lg" /> RawDrive
+        </Link>
+      </nav>
+
+      <main className="relative z-10 max-w-7xl mx-auto px-6 pt-16">
         <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">Upgrade Your Storage</h1>
-          <p className="text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto">
-            Choose the perfect plan for your photography business. Upgrades are applied instantly.
-          </p>
+          <h1 className="text-5xl font-light tracking-tighter mb-6 bg-gradient-to-br from-white to-white/60 bg-clip-text text-transparent">Plans for every stage of your craft</h1>
+          <p className="text-xl text-gray-400 max-w-xl mx-auto">Uncompromising quality for visual storytellers. Choose the scale that fits your studio.</p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="flex justify-center mb-16">
+          <div className="flex bg-white/5 p-1.5 rounded-full border border-white/10">
+            {['monthly', 'yearly'].map((b) => (
+              <button 
+                key={b}
+                onClick={() => setBilling(b as any)}
+                className={cn("px-8 py-3 rounded-full text-sm font-semibold transition-all", billing === b ? "bg-white/10 text-white" : "text-gray-500")}
+              >
+                {b.charAt(0).toUpperCase() + b.slice(1)} {b === 'yearly' && <span className="bg-blue-200 text-black px-2 py-0.5 rounded text-xs ml-1">-20%</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8">
           {PLANS.map((plan, i) => (
             <motion.div
               key={plan.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
+              className={cn(
+                "bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl p-10 flex flex-col relative overflow-hidden transition-transform hover:scale-[1.02]",
+                plan.popular ? "border-white/20 bg-white/10" : ""
+              )}
             >
-              <GlassCard 
-                intensity={plan.popular ? "high" : "low"}
-                className={cn(
-                  "p-8 relative h-full flex flex-col",
-                  plan.popular ? "border-indigo-500/50 dark:border-indigo-500/50 bg-indigo-50/50 dark:bg-indigo-900/10 shadow-xl shadow-indigo-500/10" : "bg-white/60 dark:bg-zinc-900/40"
-                )}
-              >
-                {plan.popular && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                    Most Popular
-                  </span>
-                )}
-                <div className="mb-8">
-                  <h3 className="text-xl font-semibold mb-2">{plan.name}</h3>
-                  <div className="text-4xl font-bold mb-2">{plan.storage}</div>
-                  <div className="text-2xl font-medium text-zinc-500 mb-4">{plan.price}<span className="text-sm font-normal">/mo</span></div>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400 h-10">{plan.desc}</p>
-                </div>
-
-                <div className="flex-1">
-                  <ul className="space-y-3 mb-8">
-                    {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-3 text-sm">
-                        <Check className="w-5 h-5 text-indigo-500 shrink-0" />
-                        <span className="text-zinc-600 dark:text-zinc-300">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <Button 
-                  variant={plan.popular ? "primary" : "outline"} 
-                  className="w-full rounded-xl"
-                  onClick={() => handleUpgrade(plan.id)}
-                  disabled={selectedPlan === plan.id}
-                >
-                  {selectedPlan === plan.id ? (
-                    <span className="flex items-center"><Zap className="w-4 h-4 mr-2 animate-pulse" /> Upgrading...</span>
-                  ) : (
-                    `Upgrade to ${plan.name}`
-                  )}
-                </Button>
-              </GlassCard>
+              {plan.popular && (
+                <div className="absolute top-6 right-0 bg-white text-black text-[10px] font-extrabold px-6 py-1 rotate-45 translate-x-6">MOST POPULAR</div>
+              )}
+              <div className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-2">{plan.name}</div>
+              <div className="text-5xl font-light mb-6">{plan.price}<span className="text-base text-gray-500">/mo</span></div>
+              <p className="text-gray-400 mb-8 h-12">{plan.desc}</p>
+              <ul className="space-y-4 mb-10 flex-grow">
+                {plan.features.map((feature, idx) => (
+                  <li key={idx} className="flex items-start gap-3 text-sm text-gray-200">
+                    <Check className="w-5 h-5 text-blue-300 shrink-0" /> {feature}
+                  </li>
+                ))}
+              </ul>
+              <button className={cn("w-full py-4 rounded-full font-semibold transition-all", plan.popular ? "bg-white text-black hover:bg-white/90" : "bg-white/5 border border-white/10 hover:bg-white/10")}>
+                {plan.id === 'studio' ? 'Contact Sales' : 'Get Started'}
+              </button>
             </motion.div>
           ))}
         </div>

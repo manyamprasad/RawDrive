@@ -67,6 +67,17 @@ service cloud.firestore {
     //   - eventId: string (optional)
     //   - createdAt: string (required)
     //
+    // Collection: face_embeddings
+    // Document ID: {embeddingId}
+    // Fields:
+    //   - id: string (required)
+    //   - albumId: string (required)
+    //   - photoId: string (required)
+    //   - photographerId: string (required)
+    //   - embedding: list (required, list of numbers)
+    //   - facePosition: map (required, {x, y, width, height})
+    //   - createdAt: string (required)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -195,11 +206,56 @@ service cloud.firestore {
              data.createdAt is string;
     }
 
+    function isValidFaceEmbedding(data) {
+      return hasRequiredFields(['id', 'albumId', 'photoId', 'photographerId', 'embedding', 'facePosition', 'createdAt']) &&
+             hasOnlyAllowedFields(['id', 'albumId', 'photoId', 'photographerId', 'embedding', 'facePosition', 'createdAt']) &&
+             data.photographerId == request.auth.uid &&
+             data.albumId is string &&
+             data.photoId is string &&
+             data.embedding is list && data.embedding.size() > 0 &&
+             data.facePosition is map &&
+             data.createdAt is string;
+    }
+
     function isValidProfile(data) {
       return hasRequiredFields(['user_id', 'updated_at']) &&
-             hasOnlyAllowedFields(['user_id', 'first_name', 'last_name', 'display_name', 'profile_title', 'tagline', 'bio', 'slug', 'email', 'phone', 'website', 'location', 'google_maps_url', 'address_line1', 'address_line2', 'city', 'state', 'postal_code', 'country', 'is_public', 'show_qr_code', 'show_vcard', 'indexable', 'custom_domain', 'custom_domain_enabled', 'brand_color', 'background_theme', 'avatar_url', 'logo_url', 'favicon_url', 'categories', 'socials', 'service_areas', 'custom_links', 'meta_title', 'meta_description', 'meta_keywords', 'pronouns', 'language', 'timezone', 'tags', 'consent_marketing', 'privacy_settings', 'created_at', 'updated_at', 'featured_gallery_id', 'spotify_playlist_id', 'name']) &&
+             hasOnlyAllowedFields(['user_id', 'first_name', 'last_name', 'display_name', 'profile_title', 'tagline', 'bio', 'slug', 'email', 'phone', 'website', 'booking_calendar_url', 'brand_font', 'og_title', 'og_description', 'og_image', 'location', 'google_maps_url', 'address_line1', 'address_line2', 'city', 'state', 'postal_code', 'country', 'is_public', 'show_qr_code', 'show_vcard', 'indexable', 'custom_domain', 'custom_domain_enabled', 'brand_color', 'background_theme', 'background_image_url', 'theme_id', 'avatar_url', 'logo_url', 'favicon_url', 'categories', 'socials', 'service_areas', 'custom_links', 'meta_title', 'meta_description', 'meta_keywords', 'pronouns', 'language', 'timezone', 'tags', 'consent_marketing', 'privacy_settings', 'created_at', 'updated_at', 'featured_gallery_id', 'spotify_playlist_id', 'name']) &&
              data.user_id == request.auth.uid &&
-             data.updated_at is string;
+             data.updated_at is string &&
+             (!('first_name' in data) || (data.first_name is string && data.first_name.size() <= 100)) &&
+             (!('last_name' in data) || (data.last_name is string && data.last_name.size() <= 100)) &&
+             (!('display_name' in data) || (data.display_name is string && data.display_name.size() <= 200)) &&
+             (!('profile_title' in data) || (data.profile_title is string && data.profile_title.size() <= 200)) &&
+             (!('tagline' in data) || (data.tagline is string && data.tagline.size() <= 300)) &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 2000)) &&
+             (!('slug' in data) || (data.slug is string && data.slug.size() <= 100)) &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 255)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 50)) &&
+             (!('website' in data) || (data.website is string && data.website.size() <= 500)) &&
+             (!('location' in data) || (data.location is string && data.location.size() <= 200)) &&
+             (!('google_maps_url' in data) || (data.google_maps_url is string && data.google_maps_url.size() <= 1000)) &&
+             (!('address_line1' in data) || (data.address_line1 is string && data.address_line1.size() <= 200)) &&
+             (!('address_line2' in data) || (data.address_line2 is string && data.address_line2.size() <= 200)) &&
+             (!('city' in data) || (data.city is string && data.city.size() <= 100)) &&
+             (!('state' in data) || (data.state is string && data.state.size() <= 100)) &&
+             (!('postal_code' in data) || (data.postal_code is string && data.postal_code.size() <= 20)) &&
+             (!('country' in data) || (data.country is string && data.country.size() <= 100)) &&
+             (!('custom_domain' in data) || (data.custom_domain is string && data.custom_domain.size() <= 255)) &&
+             (!('brand_color' in data) || (data.brand_color is string && data.brand_color.size() <= 20)) &&
+             (!('background_theme' in data) || (data.background_theme is string && data.background_theme.size() <= 100)) &&
+             (!('background_image_url' in data) || (data.background_image_url is string && data.background_image_url.size() <= 1000)) &&
+             (!('theme_id' in data) || (data.theme_id is string && data.theme_id.size() <= 100)) &&
+             (!('avatar_url' in data) || (data.avatar_url is string && data.avatar_url.size() <= 1000)) &&
+             (!('logo_url' in data) || (data.logo_url is string && data.logo_url.size() <= 1000)) &&
+             (!('favicon_url' in data) || (data.favicon_url is string && data.favicon_url.size() <= 1000)) &&
+             (!('meta_title' in data) || (data.meta_title is string && data.meta_title.size() <= 300)) &&
+             (!('meta_description' in data) || (data.meta_description is string && data.meta_description.size() <= 1000)) &&
+             (!('pronouns' in data) || (data.pronouns is string && data.pronouns.size() <= 50)) &&
+             (!('language' in data) || (data.language is string && data.language.size() <= 50)) &&
+             (!('timezone' in data) || (data.timezone is string && data.timezone.size() <= 100)) &&
+             (!('featured_gallery_id' in data) || (data.featured_gallery_id is string && data.featured_gallery_id.size() <= 100)) &&
+             (!('spotify_playlist_id' in data) || (data.spotify_playlist_id is string && data.spotify_playlist_id.size() <= 100)) &&
+             (!('name' in data) || (data.name is string && data.name.size() <= 200));
     }
 
     // ===============================================================
@@ -267,6 +323,13 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidLiveStream(request.resource.data);
       allow update: if isAuthenticated() && resource.data.photographerId == request.auth.uid && isValidLiveStream(request.resource.data) && request.resource.data.photographerId == resource.data.photographerId;
       allow delete: if isAuthenticated() && (resource.data.photographerId == request.auth.uid || isAdmin());
+    }
+
+    match /face_embeddings/{embeddingId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidFaceEmbedding(request.resource.data);
+      allow update: if false;
+      allow delete: if isDocOwner() || isAdmin();
     }
   }
 }

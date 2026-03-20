@@ -81,7 +81,8 @@ export default function Dashboard() {
       if (data.success) {
         // Update Firestore with real value from R2
         await updateDoc(doc(db, 'users', user.uid), {
-          storageUsed: data.storageUsed
+          storageUsed: data.storageUsed,
+          storageLimit: 5 * 1024 * 1024 * 1024 // Enforce Free Tier: 5 GB
         });
       }
     } catch (error) {
@@ -395,18 +396,20 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                {profile ? `${formatSize(profile.storageUsed)} / ${formatSize(profile.storageLimit)}` : 'Loading...'}
+                {profile ? `${formatSize(profile.storageUsed || 0)} / ${profile.storageLimit > 0 ? formatSize(profile.storageLimit) : formatSize(5 * 1024 * 1024 * 1024)}` : 'Loading...'}
               </span>
               {profile && (
                 <span className="text-[10px] text-zinc-400">
-                  {Math.round((profile.storageUsed / profile.storageLimit) * 100)}%
+                  {Math.round(((profile.storageUsed || 0) / (profile.storageLimit > 0 ? profile.storageLimit : 5 * 1024 * 1024 * 1024)) * 100)}%
                 </span>
               )}
             </div>
             <div className="w-full h-2 bg-zinc-200/50 dark:bg-zinc-700/50 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-500" 
-                style={{ width: profile ? `${Math.min(100, (profile.storageUsed / profile.storageLimit) * 100)}%` : '0%' }}
+                style={{ width: profile 
+                  ? `${Math.min(100, ((profile.storageUsed || 0) / (profile.storageLimit > 0 ? profile.storageLimit : 5 * 1024 * 1024 * 1024)) * 100)}%` 
+                  : '0%' }}
               ></div>
             </div>
             <Link to="/pricing">
@@ -512,75 +515,72 @@ export default function Dashboard() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
                   >
-                    <GlassCard intensity="low" className="group overflow-hidden bg-white/60 dark:bg-zinc-900/40 hover:border-indigo-500/50 transition-colors cursor-pointer">
-                      <div className="relative h-48 overflow-hidden">
-                        <div className="absolute top-3 left-3 z-10">
-                          <input 
-                            type="checkbox" 
-                            checked={selectedEvents.includes(event.id)}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              toggleSelection(event.id);
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-5 h-5 rounded border-white/40 bg-black/20 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                          />
-                        </div>
-                        {event.coverKey ? (
-                          <LazyImage 
-                            photoKey={event.coverKey} 
-                            alt={event.name} 
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          />
-                        ) : (
-                          <img 
-                            src="https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=800&auto=format&fit=crop" 
-                            alt={event.name} 
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          />
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                          <div className="flex gap-2 w-full">
-                            <Button variant="glass" size="sm" className="flex-1 h-9 text-xs bg-white/20 hover:bg-white/30 text-white border-white/20">
-                              <Share2 className="w-3 h-3 mr-1.5" /> Share
-                            </Button>
-                            <Link to={`/event/${event.id}`} className="flex-1">
-                              <Button variant="primary" size="sm" className="w-full h-9 text-xs shadow-lg shadow-indigo-500/30">
-                                View
-                              </Button>
-                            </Link>
-                            <Button 
-                              variant="glass" 
-                              size="sm" 
-                              onClick={(e) => {
-                                e.preventDefault();
+                    <Link to={`/event/${event.id}`} className="block">
+                      <GlassCard intensity="low" className="group overflow-hidden bg-white/60 dark:bg-zinc-900/40 hover:border-indigo-500/50 transition-colors cursor-pointer">
+                        <div className="relative h-48 overflow-hidden">
+                          <div className="absolute top-3 left-3 z-10">
+                            <input 
+                              type="checkbox" 
+                              checked={selectedEvents.includes(event.id)}
+                              onChange={(e) => {
                                 e.stopPropagation();
-                                setEditingEvent(event);
-                                setEditName(event.name);
-                              }} 
-                              className="w-9 h-9 p-0 text-zinc-300 hover:text-white hover:bg-white/20 border-white/20"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              variant="glass" 
-                              size="sm" 
-                              onClick={(e) => handleDeleteEvent(event.id, e)} 
-                              className="w-9 h-9 p-0 text-red-300 hover:text-red-200 hover:bg-red-500/30 border-white/20"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                                toggleSelection(event.id);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-5 h-5 rounded border-white/40 bg-black/20 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            />
+                          </div>
+                          {event.coverKey ? (
+                            <LazyImage 
+                              photoKey={event.coverKey} 
+                              alt={event.name} 
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <img 
+                              src="https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=800&auto=format&fit=crop" 
+                              alt={event.name} 
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                            <div className="flex gap-2 w-full justify-end">
+                              <Button variant="glass" size="sm" className="h-9 text-xs bg-white/20 hover:bg-white/30 text-white border-white/20">
+                                <Share2 className="w-3 h-3 mr-1.5" /> Share
+                              </Button>
+                              <Button 
+                                variant="glass" 
+                                size="sm" 
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setEditingEvent(event);
+                                  setEditName(event.name);
+                                }} 
+                                className="w-9 h-9 p-0 text-zinc-300 hover:text-white hover:bg-white/20 border-white/20"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                variant="glass" 
+                                size="sm" 
+                                onClick={(e) => handleDeleteEvent(event.id, e)} 
+                                className="w-9 h-9 p-0 text-red-300 hover:text-red-200 hover:bg-red-500/30 border-white/20"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="p-5">
-                        <h3 className="font-semibold text-lg mb-1 truncate">{event.name}</h3>
-                        <div className="flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-400">
-                          <span>{event.date}</span>
-                          <span className="flex items-center gap-1"><Folder className="w-3 h-3" /> {event.albums} Albums</span>
+                        <div className="p-5">
+                          <h3 className="font-semibold text-lg mb-1 truncate">{event.name}</h3>
+                          <div className="flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-400">
+                            <span>{event.date}</span>
+                            <span className="flex items-center gap-1"><Folder className="w-3 h-3" /> {event.albums} Albums</span>
+                          </div>
                         </div>
-                      </div>
-                    </GlassCard>
+                      </GlassCard>
+                    </Link>
                   </motion.div>
                 ))}
               </div>

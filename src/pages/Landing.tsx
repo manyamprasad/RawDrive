@@ -1,3 +1,4 @@
+import Hero from '@/components/Hero';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { Camera, Cloud, Shield, Zap, ChevronRight, Image as ImageIcon, Users, Smartphone, Star, CheckCircle2, ArrowRight, Mail, User } from 'lucide-react';
@@ -46,57 +47,9 @@ export default function Landing() {
         </GlassCard>
       </nav>
 
-      {/* Hero Section (Design: Hook & CTA) */}
-      <section className="relative pt-48 pb-32 px-6">
-        <div className="max-w-5xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium text-sm mb-8 shadow-inner border border-indigo-200 dark:border-indigo-800/50">
-              <Star className="w-4 h-4 fill-current" /> Trusted by 10,000+ Indian Photographers
-            </div>
-            <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-8 leading-tight drop-shadow-sm">
-              Stop Sending Google Drive Links. <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-500 dark:from-indigo-400 dark:to-violet-300">
-                Deliver Premium Experiences.
-              </span>
-            </h1>
-            <p className="text-xl text-zinc-700 dark:text-zinc-300 max-w-3xl mx-auto mb-12 drop-shadow-sm font-medium">
-              RawDrive is the all-in-one gallery platform that automates photo delivery, eliminates back-and-forth with AI Face Search, and makes your photography business look world-class.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/register">
-                <Button size="lg" className="rounded-full w-full sm:w-auto shadow-xl shadow-indigo-500/20 text-lg px-8 h-14">
-                  Start Free Trial <ChevronRight className="ml-2 w-5 h-5" />
-                </Button>
-              </Link>
-              <Link to="/demo">
-                <Button variant="glass" size="lg" className="rounded-full w-full sm:w-auto text-lg px-8 h-14">
-                  View Demo Gallery
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
-        </div>
+      {/* Hero Section */}
+      <Hero />
 
-        {/* Hero Image / Mockup */}
-        <motion.div 
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
-          className="max-w-5xl mx-auto mt-24 relative"
-        >
-          <GlassCard intensity="high" className="p-2 rounded-[2.5rem] shadow-2xl overflow-hidden">
-            <img 
-              src="https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?q=80&w=2071&auto=format&fit=crop" 
-              alt="Dashboard Preview" 
-              className="w-full h-auto rounded-[2rem] object-cover shadow-inner"
-            />
-          </GlassCard>
-        </motion.div>
-      </section>
 
       {/* Data Section (3 Core Value Props addressing Pain Points) */}
       <section id="features" className="py-32 px-6 relative">

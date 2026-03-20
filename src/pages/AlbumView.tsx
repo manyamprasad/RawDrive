@@ -632,119 +632,20 @@ export default function AlbumView() {
       style={{ fontFamily: profile?.brand_font || 'Inter, sans-serif' }}
     >
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/40 dark:bg-zinc-950/40 backdrop-blur-2xl border-b border-white/20 dark:border-zinc-800/50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-50 bg-[#030406]/60 backdrop-blur-2xl border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            {(album.eventId || profile?.slug) ? (
-              <Button variant="ghost" size="icon" onClick={() => window.history.length > 2 ? navigate(-1) : navigate(album.eventId ? `/event/${album.eventId}` : `/p/${profile?.slug}`)} className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20">
-                <ChevronLeft className="w-5 h-5" />
-              </Button>
-            ) : (
-              <Button variant="ghost" size="icon" onClick={() => window.history.length > 2 ? navigate(-1) : navigate('/')} className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20">
-                <ChevronLeft className="w-5 h-5" />
-              </Button>
-            )}
-            <Link to={profile?.slug ? `/p/${profile.slug}` : "/"} className="flex items-center gap-2">
-              {profile?.avatar_url ? (
-                <div className="w-8 h-8 rounded-lg overflow-hidden shadow-lg">
-                  <LazyImage photoKey={profile.avatar_url} alt="Logo" className="w-full h-full object-cover" />
-                </div>
-              ) : (
-                <div 
-                  className="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg"
-                  style={{ backgroundColor: profile?.brand_color || '#4f46e5' }}
-                >
-                  <Camera className="text-white w-4 h-4" />
-                </div>
-              )}
-              <span className="font-bold text-lg hidden sm:block">
-                {profile?.display_name || 'RawDrive'}
-              </span>
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-white/5 border border-white/10 hover:bg-white/10">
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+            <Link to="/" className="text-xl font-semibold flex items-center gap-3">
+              <div className="w-7 h-7 bg-white rounded-lg" /> RawDrive
             </Link>
           </div>
           
           <div className="flex items-center gap-3">
-            <ThemeToggle />
-            {isOwner && (
-              <>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="hidden sm:flex items-center gap-2 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md border-white/20 dark:border-zinc-800/50"
-                  onClick={() => setIsYoutubeDialogOpen(true)}
-                >
-                  <Youtube className="w-4 h-4" />
-                  Add Video
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className="sm:hidden bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md border-white/20 dark:border-zinc-800/50"
-                  onClick={() => setIsYoutubeDialogOpen(true)}
-                >
-                  <Youtube className="w-4 h-4" />
-                </Button>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  className="hidden"
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                />
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="hidden sm:flex items-center gap-2 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md border-white/20 dark:border-zinc-800/50"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                >
-                  {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
-                  Add Photos
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className="sm:hidden bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md border-white/20 dark:border-zinc-800/50"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                >
-                  {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
-                </Button>
-              </>
-            )}
-            {isInstallable && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="hidden sm:flex items-center gap-2 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md border-white/20 dark:border-zinc-800/50"
-                onClick={promptInstall}
-              >
-                <Download className="w-4 h-4" />
-                Install App
-              </Button>
-            )}
-            <Link to={`/find-me/${id}`}>
-              <Button variant="glass" size="sm" className="bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 border-indigo-600/20 hover:bg-indigo-600/20">
-                <Search className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Find My Photos</span>
-              </Button>
-            </Link>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="hidden sm:flex items-center gap-2 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md border-white/20 dark:border-zinc-800/50"
-              onClick={() => setIsShareOpen(true)}
-            >
-              <Share2 className="w-4 h-4" />
-              Share
-            </Button>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="sm:hidden bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md border-white/20 dark:border-zinc-800/50"
-              onClick={() => setIsShareOpen(true)}
-            >
-              <Share2 className="w-4 h-4" />
+            <Button variant="glass" size="sm" className="bg-white/5 border border-white/10 hover:bg-white/10" onClick={() => setIsShareOpen(true)}>
+              <Share2 className="w-4 h-4 mr-2" /> Share
             </Button>
           </div>
         </div>
@@ -910,9 +811,7 @@ export default function AlbumView() {
               <LayoutGrid className="w-4 h-4" />
             </button>
           </div>
-        </div>
-
-        <div className={cn("transition-all duration-500", densityConfig[density])}>
+        </div>        <div className={cn("grid gap-4 p-6 transition-all duration-500", densityConfig[density])}>
           {photos.map((photo, i) => (
             <motion.div
               key={photo.id}
@@ -921,9 +820,11 @@ export default function AlbumView() {
               transition={{ delay: i * 0.05 }}
               className="relative group"
             >
-              <GlassCard 
-                intensity="low" 
-                className={cn("group relative overflow-hidden rounded-2xl bg-white/60 dark:bg-zinc-900/40 cursor-pointer h-full transition-all", selectedPhotoIds.includes(photo.id) ? "ring-2 ring-blue-500 shadow-lg" : "hover:shadow-md")} 
+              <div 
+                className={cn(
+                  "relative overflow-hidden rounded-2xl bg-white/5 border border-white/10 cursor-pointer h-full transition-all duration-300",
+                  selectedPhotoIds.includes(photo.id) ? "ring-2 ring-white/50 shadow-lg" : "hover:bg-white/10 hover:shadow-xl"
+                )}
                 onClick={() => {
                   if (!isLongPressRef.current) setSelectedPhotoIndex(i);
                 }}
@@ -934,8 +835,8 @@ export default function AlbumView() {
                 <button 
                   onClick={(e) => togglePhotoSelection(e, photo.id)}
                   className={cn(
-                    "absolute top-2 left-2 z-10 p-1 rounded-full transition-colors",
-                    selectedPhotoIds.includes(photo.id) ? "bg-blue-500 text-white" : "bg-black/20 text-white hover:bg-black/40"
+                    "absolute top-3 left-3 z-10 p-1.5 rounded-full backdrop-blur-md transition-colors",
+                    selectedPhotoIds.includes(photo.id) ? "bg-white/20 text-white" : "bg-black/20 text-white hover:bg-black/40"
                   )}
                 >
                   {selectedPhotoIds.includes(photo.id) ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
@@ -944,39 +845,39 @@ export default function AlbumView() {
                   photoKey={photo.webpKey} 
                   alt={`Photo ${photo.id}`} 
                   className={cn(
-                    "w-full object-cover",
+                    "w-full object-cover transition-transform duration-500 group-hover:scale-105",
                     density === 'compact' ? "aspect-square" : density === 'comfortable' ? "aspect-[4/3]" : "aspect-[3/2]"
                   )}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
                   <div className="flex items-center justify-between">
                     <button 
                       onClick={(e) => { e.stopPropagation(); toggleLike(photo); }}
                       className={cn(
                         "flex items-center gap-1.5 text-sm font-medium transition-colors",
-                        photo.isLiked ? "text-red-500" : "text-white/90 hover:text-white"
+                        photo.isLiked ? "text-red-400" : "text-white/90 hover:text-white"
                       )}
                     >
                       <Heart className={cn("w-4 h-4", photo.isLiked && "fill-current")} /> {photo.likes}
                     </button>
-                    <button className="w-8 h-8 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors">
+                    <button className="w-8 h-8 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors">
                       <Download className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-              </GlassCard>
+              </div>
               {isOwner && (
-                <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10">
+                <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10">
                   <button
                     onClick={(e) => handleSetCover(photo.webpKey, e)}
-                    className="px-3 py-1.5 bg-black/50 hover:bg-indigo-500/80 text-white text-xs font-medium rounded-full backdrop-blur-md transition-colors"
+                    className="px-3 py-1.5 bg-black/40 hover:bg-white/20 text-white text-xs font-medium rounded-full backdrop-blur-md transition-colors"
                     title="Set as Cover"
                   >
                     Set as Cover
                   </button>
                   <button
                     onClick={(e) => handleDeletePhoto(photo.id, e)}
-                    className="p-2 bg-black/50 hover:bg-red-500/80 text-white rounded-full backdrop-blur-md transition-colors"
+                    className="p-2 bg-black/40 hover:bg-red-500/50 text-white rounded-full backdrop-blur-md transition-colors"
                     title="Delete Photo"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -996,7 +897,7 @@ export default function AlbumView() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className={cn(
-              "fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center transition-cursor duration-300",
+              "fixed inset-0 z-[100] bg-[#030406]/90 backdrop-blur-3xl flex items-center justify-center transition-cursor duration-300",
               !showControls && "cursor-none"
             )}
             onMouseMove={() => {
@@ -1018,7 +919,7 @@ export default function AlbumView() {
                   e.stopPropagation();
                   setIsPlayingSlideshow(!isPlayingSlideshow);
                 }}
-                className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors"
+                className="w-12 h-12 bg-white/5 border border-white/10 hover:bg-white/10 rounded-full flex items-center justify-center text-white transition-colors"
                 title={isPlayingSlideshow ? "Pause Slideshow" : "Play Slideshow"}
               >
                 {isPlayingSlideshow ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
@@ -1029,7 +930,7 @@ export default function AlbumView() {
                   setSelectedPhotoIndex(null);
                   setIsPlayingSlideshow(false);
                 }}
-                className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors"
+                className="w-12 h-12 bg-white/5 border border-white/10 hover:bg-white/10 rounded-full flex items-center justify-center text-white transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -1039,7 +940,7 @@ export default function AlbumView() {
               <button 
                 onClick={(e) => { e.stopPropagation(); handlePrevPhoto(); }}
                 className={cn(
-                  "absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-50 duration-300",
+                  "absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/5 border border-white/10 hover:bg-white/10 rounded-full flex items-center justify-center text-white transition-colors z-50 duration-300",
                   showControls ? "opacity-100" : "opacity-0"
                 )}
               >
@@ -1051,7 +952,7 @@ export default function AlbumView() {
               <button 
                 onClick={(e) => { e.stopPropagation(); handleNextPhoto(); }}
                 className={cn(
-                  "absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-50 duration-300",
+                  "absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/5 border border-white/10 hover:bg-white/10 rounded-full flex items-center justify-center text-white transition-colors z-50 duration-300",
                   showControls ? "opacity-100" : "opacity-0"
                 )}
               >
@@ -1071,11 +972,11 @@ export default function AlbumView() {
                 <LazyImage 
                   photoKey={photos[selectedPhotoIndex].webpKey} 
                   alt={`Photo ${photos[selectedPhotoIndex].id}`} 
-                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl"
+                  className="max-w-full max-h-[70vh] object-contain rounded-2xl shadow-2xl border border-white/10"
                 />
                 
                 <div className={cn(
-                  "w-full flex items-center justify-between text-white/80 mt-4 transition-opacity duration-300",
+                  "w-full flex items-center justify-between text-white/80 mt-6 transition-opacity duration-300",
                   showControls ? "opacity-100" : "opacity-0"
                 )}>
                   <div className="flex items-center gap-4">
@@ -1083,7 +984,7 @@ export default function AlbumView() {
                       onClick={() => toggleLike(photos[selectedPhotoIndex])}
                       className={cn(
                         "flex items-center gap-2 transition-colors",
-                        photos[selectedPhotoIndex].isLiked ? "text-red-500" : "text-white/80 hover:text-white"
+                        photos[selectedPhotoIndex].isLiked ? "text-red-400" : "text-white/80 hover:text-white"
                       )}
                     >
                       <Heart className={cn("w-5 h-5", photos[selectedPhotoIndex].isLiked && "fill-current")} /> {photos[selectedPhotoIndex].likes}
@@ -1108,7 +1009,6 @@ export default function AlbumView() {
                                 });
                               } else {
                                 await navigator.clipboard.writeText(data.url);
-                                // Optional: You could use a toast here instead of alert
                                 alert('Link copied to clipboard!');
                               }
                             }
@@ -1142,7 +1042,7 @@ export default function AlbumView() {
                 </div>
 
                 {/* Comments Section */}
-                <div className="w-full max-w-2xl mt-8 bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/10">
+                <div className="w-full max-w-2xl mt-8 bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10">
                   <h3 className="text-white font-semibold mb-4">Comments</h3>
                   <div className="space-y-4 mb-6 max-h-60 overflow-y-auto pr-2">
                     {comments[photos[selectedPhotoIndex].id]?.map(comment => (
@@ -1168,7 +1068,7 @@ export default function AlbumView() {
                         placeholder="Add a comment..."
                         className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
-                      <Button type="submit" disabled={!newComment.trim()} className="shrink-0">
+                      <Button type="submit" disabled={!newComment.trim()} className="shrink-0 bg-white/10 border border-white/10 hover:bg-white/20">
                         Post
                       </Button>
                     </form>

@@ -24,10 +24,12 @@ export default function ProfileSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingBackground, setUploadingBackground] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bgFileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<TabId>('identity');
   
   const [profile, setProfile] = useState<Partial<PhotographerProfile>>({
@@ -57,6 +59,8 @@ export default function ProfileSettings() {
     custom_domain_enabled: false,
     brand_color: '#4f46e5',
     background_theme: 'plain-light',
+    background_image_url: '',
+    theme_id: '',
     avatar_url: '',
     logo_url: '',
     favicon_url: '',
@@ -170,18 +174,33 @@ export default function ProfileSettings() {
     setProfile(prev => ({ ...prev, [field]: arr }));
   };
 
-  const handleSocialPrivacyChange = (platform: string) => {
-    setProfile(prev => ({
-      ...prev,
-      privacy_settings: {
-        ...(prev.privacy_settings || {}),
-        socials: {
-          ...(prev.privacy_settings?.socials || {}),
-          [platform]: !(prev.privacy_settings?.socials?.[platform as keyof typeof prev.privacy_settings.socials] ?? false)
-        }
+  const handlePrivacyChange = (field: string, value: boolean) => {
+    setProfile(prev => {
+      const newPrivacySettings = { ...(prev.privacy_settings || {}) };
+      
+      if (field.startsWith('socials.')) {
+        const socialField = field.split('.')[1] as keyof NonNullable<PhotographerProfile['privacy_settings']['socials']>;
+        newPrivacySettings.socials = {
+          ...(newPrivacySettings.socials || {}),
+          [socialField]: value
+        };
+      } else {
+        (newPrivacySettings as any)[field] = value;
       }
-    }));
+      
+      return { ...prev, privacy_settings: newPrivacySettings };
+    });
   };
+
+  const VisibilityToggle = ({ checked, onChange, label }: { checked: boolean, onChange: (checked: boolean) => void, label: string }) => (
+    <div className="flex items-center justify-between mb-1">
+      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</label>
+      <label className="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="sr-only peer" />
+        <div className="w-8 h-4 bg-zinc-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all dark:border-zinc-600 peer-checked:bg-indigo-600"></div>
+      </label>
+    </div>
+  );
 
   const handleThemeSelect = (themeId: string) => {
     setProfile(prev => ({ ...prev, background_theme: themeId }));
@@ -199,6 +218,32 @@ export default function ProfileSettings() {
     
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setUploadingBackground(true);
+    const formData = new FormData();
+    formData.append('photo', file, 'background.jpg');
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Upload failed');
+      
+      const data = await response.json();
+      setProfile(prev => ({ ...prev, background_image_url: data.webpKey }));
+    } catch (error) {
+      console.error("Error uploading background:", error);
+      setError('Failed to upload background. Please try again.');
+    } finally {
+      setUploadingBackground(false);
     }
   };
 
@@ -257,6 +302,7 @@ export default function ProfileSettings() {
 
       // Clean up arrays and set name
       const cleanedProfile = { ...profile };
+      delete cleanedProfile.id;
       ['categories', 'service_areas', 'tags', 'meta_keywords'].forEach(field => {
         const key = field as keyof PhotographerProfile;
         if (Array.isArray(cleanedProfile[key])) {
@@ -275,7 +321,7 @@ export default function ProfileSettings() {
       setTimeout(() => setSuccess(null), 3000);
     } catch (error) {
       console.error("Error saving profile:", error);
-      setError('Failed to save profile. Please try again.');
+      setError(error instanceof Error ? error.message : 'Failed to save profile. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -422,22 +468,22 @@ export default function ProfileSettings() {
                       <div className="flex-1 space-y-4 w-full">
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">First Name</label>
+                            <VisibilityToggle checked={profile.privacy_settings?.show_first_name ?? false} onChange={(checked) => handlePrivacyChange('show_first_name', checked)} label="Show First Name" />
                             <Input name="first_name" value={profile.first_name || ''} onChange={handleChange} placeholder="Jane" />
                           </div>
                           <div className="space-y-2">
-                            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Last Name</label>
+                            <VisibilityToggle checked={profile.privacy_settings?.show_last_name ?? false} onChange={(checked) => handlePrivacyChange('show_last_name', checked)} label="Show Last Name" />
                             <Input name="last_name" value={profile.last_name || ''} onChange={handleChange} placeholder="Doe" />
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Display Name / Brand</label>
+                            <VisibilityToggle checked={profile.privacy_settings?.show_display_name ?? false} onChange={(checked) => handlePrivacyChange('show_display_name', checked)} label="Show Display Name" />
                             <Input name="display_name" value={profile.display_name || ''} onChange={handleChange} placeholder="Jane Doe Photography" />
                           </div>
                           <div className="space-y-2">
-                            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Profile Title</label>
+                            <VisibilityToggle checked={profile.privacy_settings?.show_profile_title ?? false} onChange={(checked) => handlePrivacyChange('show_profile_title', checked)} label="Show Profile Title" />
                             <Input name="profile_title" value={profile.profile_title || ''} onChange={handleChange} placeholder="Wedding Photographer" />
                           </div>
                         </div>
@@ -445,12 +491,12 @@ export default function ProfileSettings() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Tagline</label>
+                      <VisibilityToggle checked={profile.privacy_settings?.show_tagline ?? false} onChange={(checked) => handlePrivacyChange('show_tagline', checked)} label="Show Tagline" />
                       <Input name="tagline" value={profile.tagline || ''} onChange={handleChange} placeholder="Cinematic stories, real emotions" />
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Bio</label>
+                      <VisibilityToggle checked={profile.privacy_settings?.show_bio ?? false} onChange={(checked) => handlePrivacyChange('show_bio', checked)} label="Show Bio" />
                       <textarea 
                         name="bio" 
                         value={profile.bio || ''} 
@@ -470,7 +516,7 @@ export default function ProfileSettings() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Categories (comma separated)</label>
+                        <VisibilityToggle checked={profile.privacy_settings?.show_categories ?? false} onChange={(checked) => handlePrivacyChange('show_categories', checked)} label="Show Categories" />
                         <Input 
                           value={profile.categories?.join(', ') || ''} 
                           onChange={(e) => handleArrayChange('categories', e.target.value)} 
@@ -566,6 +612,31 @@ export default function ProfileSettings() {
                     </div>
 
                     <div className="space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                      <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Background Photo</label>
+                      <div className="flex items-center gap-4">
+                        <div className="w-24 h-24 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800">
+                          {profile.background_image_url ? (
+                            <LazyImage photoKey={profile.background_image_url} alt="Background" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-zinc-400">
+                              <ImageIcon className="w-8 h-8" />
+                            </div>
+                          )}
+                        </div>
+                        <input 
+                          type="file" 
+                          ref={bgFileInputRef} 
+                          onChange={handleBackgroundUpload} 
+                          accept="image/*" 
+                          className="hidden" 
+                        />
+                        <Button variant="outline" size="sm" onClick={() => bgFileInputRef.current?.click()} disabled={uploadingBackground}>
+                          {uploadingBackground ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Upload className="w-4 h-4 mr-2" /> Upload Background</>}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
                       <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Background Theme Template</label>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         {THEME_TEMPLATES.map((template) => (
@@ -625,19 +696,19 @@ export default function ProfileSettings() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Public Email</label>
+                        <VisibilityToggle checked={profile.privacy_settings?.show_email ?? false} onChange={(checked) => handlePrivacyChange('show_email', checked)} label="Show Public Email" />
                         <Input name="email" type="email" value={profile.email || ''} onChange={handleChange} placeholder="hello@example.com" />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Phone</label>
+                        <VisibilityToggle checked={profile.privacy_settings?.show_phone ?? false} onChange={(checked) => handlePrivacyChange('show_phone', checked)} label="Show Phone" />
                         <Input name="phone" value={profile.phone || ''} onChange={handleChange} placeholder="+1 234 567 8900" />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Website</label>
+                        <VisibilityToggle checked={profile.privacy_settings?.show_website ?? false} onChange={(checked) => handlePrivacyChange('show_website', checked)} label="Show Website" />
                         <Input name="website" value={profile.website || ''} onChange={handleChange} placeholder="https://janedoe.com" />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Booking Calendar URL</label>
+                        <VisibilityToggle checked={profile.privacy_settings?.show_booking ?? false} onChange={(checked) => handlePrivacyChange('show_booking', checked)} label="Show Booking URL" />
                         <Input name="booking_calendar_url" value={profile.booking_calendar_url || ''} onChange={handleChange} placeholder="https://cal.com/janedoe" />
                       </div>
                     </div>
@@ -647,11 +718,15 @@ export default function ProfileSettings() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {['instagram', 'facebook', 'twitter', 'linkedin', 'youtube', 'tiktok', 'pinterest', 'whatsapp'].map((platform) => (
                           <div key={platform} className="space-y-1">
-                            <label className="text-xs font-medium text-zinc-500 capitalize">{platform}</label>
+                            <VisibilityToggle 
+                              checked={profile.privacy_settings?.socials?.[platform as keyof NonNullable<PhotographerProfile['privacy_settings']['socials']>] ?? false} 
+                              onChange={(checked) => handlePrivacyChange(`socials.${platform}`, checked)} 
+                              label={platform === 'whatsapp' ? 'Show WhatsApp Phone Number' : `Show ${platform.charAt(0).toUpperCase() + platform.slice(1)}`} 
+                            />
                             <Input 
                               value={profile.socials?.[platform as keyof typeof profile.socials] || ''} 
                               onChange={(e) => handleSocialChange(platform, e.target.value)} 
-                              placeholder={`https://${platform}.com/username`} 
+                              placeholder={platform === 'whatsapp' ? '+1234567890' : `https://${platform}.com/username`} 
                             />
                           </div>
                         ))}
@@ -669,13 +744,13 @@ export default function ProfileSettings() {
                     
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Display Location</label>
+                        <VisibilityToggle checked={profile.privacy_settings?.show_location ?? false} onChange={(checked) => handlePrivacyChange('show_location', checked)} label="Show Location" />
                         <Input name="location" value={profile.location || ''} onChange={handleChange} placeholder="e.g., Essen, Germany" />
                         <p className="text-xs text-zinc-500">This is the text that will be displayed on your profile.</p>
                       </div>
                       
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Google Maps Link</label>
+                        <VisibilityToggle checked={profile.privacy_settings?.show_google_maps ?? false} onChange={(checked) => handlePrivacyChange('show_google_maps', checked)} label="Show Google Maps Link" />
                         <Input name="google_maps_url" value={profile.google_maps_url || ''} onChange={handleChange} placeholder="https://maps.app.goo.gl/..." />
                         <p className="text-xs text-zinc-500">Paste a shareable link from Google Maps. When clients click your location, it will open this link.</p>
                       </div>
@@ -683,11 +758,10 @@ export default function ProfileSettings() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Address Line 1</label>
+                        <VisibilityToggle checked={profile.privacy_settings?.show_address_details ?? false} onChange={(checked) => handlePrivacyChange('show_address_details', checked)} label="Show Address Details" />
                         <Input name="address_line1" value={profile.address_line1 || ''} onChange={handleChange} placeholder="Street, house no." />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Address Line 2</label>
                         <Input name="address_line2" value={profile.address_line2 || ''} onChange={handleChange} placeholder="Suite, landmark" />
                       </div>
                       <div className="space-y-2">
@@ -730,7 +804,7 @@ export default function ProfileSettings() {
                     </div>
 
                     <div className="space-y-2 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                      <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Service Areas (comma separated)</label>
+                      <VisibilityToggle checked={profile.privacy_settings?.show_service_areas ?? false} onChange={(checked) => handlePrivacyChange('show_service_areas', checked)} label="Show Service Areas" />
                       <Input 
                         value={profile.service_areas?.join(', ') || ''} 
                         onChange={(e) => handleArrayChange('service_areas', e.target.value)} 

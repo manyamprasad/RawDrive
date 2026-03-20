@@ -73,26 +73,32 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden text-zinc-900 dark:text-zinc-50 font-sans bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden text-white font-sans bg-[#030406]">
+      {/* Ambient Background */}
+      <div className="fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-[#030406]" />
+        <div className="absolute -top-[10%] left-[20%] w-[60vw] h-[60vw] bg-blue-900/20 rounded-full blur-[100px]" />
+        <div className="absolute -bottom-[20%] right-[10%] w-[50vw] h-[50vw] bg-blue-800/10 rounded-full blur-[100px]" />
+      </div>
+
       <header className="absolute top-8 left-8 right-8 flex items-center justify-between z-10">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/30">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
             <Camera className="text-white w-4 h-4" />
           </div>
-          <span className="font-bold text-lg">RawDrive</span>
+          <span className="font-bold text-lg tracking-tight">RawDrive</span>
         </Link>
-        <ThemeToggle />
       </header>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-xl mt-16"
+        className="w-full max-w-xl mt-16 relative z-10"
       >
-        <GlassCard intensity="high" className="p-8 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-2xl border-white/40 dark:border-zinc-800/50 shadow-2xl">
+        <GlassCard intensity="high" className="p-8 bg-white/5 backdrop-blur-2xl border border-white/10 shadow-2xl">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Create Account</h1>
-            <p className="text-zinc-500 dark:text-zinc-400 text-sm">Join the premium network of Indian photographers.</p>
+            <h1 className="text-3xl font-light tracking-tighter mb-2">Create Account</h1>
+            <p className="text-zinc-400 text-sm">Join the premium network of Indian photographers.</p>
           </div>
 
           {error && (
@@ -106,13 +112,13 @@ export default function Register() {
               <div className="space-y-2">
                 <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500 ml-1">Full Name</label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                   <input
                     required
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                    className="w-full bg-white/50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl py-2.5 pl-10 pr-4 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-zinc-600"
                     placeholder="John Doe"
                   />
                 </div>

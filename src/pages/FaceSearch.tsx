@@ -14,19 +14,35 @@ export default function FaceSearch() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanComplete, setScanComplete] = useState(false);
 
-  const capture = useCallback(() => {
+  const capture = useCallback(async () => {
     const imageSrc = webcamRef.current?.getScreenshot();
     if (imageSrc) {
       setImgSrc(imageSrc);
       setIsScanning(true);
       
-      // Simulate face scanning and matching process
-      setTimeout(() => {
+      try {
+        const response = await fetch('/api/face/match', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: imageSrc, albumId }),
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+          console.log("Matches found:", data.matches);
+          localStorage.setItem(`matchedPhotoIds_${albumId}`, JSON.stringify(data.matches));
+          setIsScanning(false);
+          setScanComplete(true);
+        } else {
+          throw new Error(data.error || 'Matching failed');
+        }
+      } catch (error) {
+        console.error("Face match error:", error);
         setIsScanning(false);
-        setScanComplete(true);
-      }, 3000);
+        // Handle error (e.g., show a toast)
+      }
     }
-  }, [webcamRef]);
+  }, [webcamRef, albumId]);
 
   const retake = () => {
     setImgSrc(null);

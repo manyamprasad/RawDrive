@@ -194,6 +194,7 @@ export default function Upload() {
       try {
         const formData = new FormData();
         formData.append('photo', fileObj.file);
+        formData.append('albumId', albumId);
 
         const response = await fetch('/api/upload', {
           method: 'POST',

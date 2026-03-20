@@ -422,70 +422,67 @@ export default function EventView() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
               >
-                <GlassCard intensity="low" className="group overflow-hidden bg-white/60 dark:bg-zinc-900/40 hover:border-indigo-500/50 transition-colors cursor-pointer">
-                  <div className="relative h-48 overflow-hidden">
-                    {isOwner && (
-                      <div className="absolute top-3 left-3 z-10">
-                        <input 
-                          type="checkbox" 
-                          checked={selectedAlbums.includes(album.id)}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            toggleSelection(album.id);
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-5 h-5 rounded border-white/40 bg-black/20 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                        />
-                      </div>
-                    )}
-                    <LazyImage 
-                      photoKey={album.coverKey} 
-                      alt={album.name} 
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                      <div className="flex gap-2 w-full">
-                        <Link to={`/album/${album.id}`} className="flex-1">
-                          <Button variant="primary" size="sm" className="w-full h-9 text-xs shadow-lg shadow-indigo-500/30">
-                            View Album
-                          </Button>
-                        </Link>
-                        {isOwner && (
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="glass" 
-                              size="sm" 
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setEditingAlbum(album);
-                                setEditName(album.name);
-                              }} 
-                              className="w-9 h-9 p-0 text-white hover:text-indigo-200 hover:bg-indigo-500/30 border-white/20"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              variant="glass" 
-                              size="sm" 
-                              onClick={(e) => handleDeleteAlbum(album.id, e)} 
-                              className="w-9 h-9 p-0 text-red-300 hover:text-red-200 hover:bg-red-500/30 border-white/20"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        )}
+                <Link to={`/album/${album.id}`} className="block">
+                  <GlassCard intensity="low" className="group overflow-hidden bg-white/60 dark:bg-zinc-900/40 hover:border-indigo-500/50 transition-colors cursor-pointer">
+                    <div className="relative h-48 overflow-hidden">
+                      {isOwner && (
+                        <div className="absolute top-3 left-3 z-10">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedAlbums.includes(album.id)}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              toggleSelection(album.id);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-5 h-5 rounded border-white/40 bg-black/20 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          />
+                        </div>
+                      )}
+                      <LazyImage 
+                        photoKey={album.coverKey} 
+                        alt={album.name} 
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                        <div className="flex gap-2 w-full justify-end">
+                          {isOwner && (
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="glass" 
+                                size="sm" 
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setEditingAlbum(album);
+                                  setEditName(album.name);
+                                }} 
+                                className="w-9 h-9 p-0 text-white hover:text-indigo-200 hover:bg-indigo-500/30 border-white/20"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                variant="glass" 
+                                size="sm" 
+                                onClick={(e) => handleDeleteAlbum(album.id, e)} 
+                                className="w-9 h-9 p-0 text-red-300 hover:text-red-200 hover:bg-red-500/30 border-white/20"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="p-5">
-                    <h3 className="font-semibold text-lg mb-1 truncate">{album.name}</h3>
-                    <div className="flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-400">
-                      <span>{album.createdAt}</span>
-                      <span className="flex items-center gap-1"><ImageIcon className="w-3 h-3" /> {album.photoCount} Photos</span>
+                    <div className="p-5">
+                      <h3 className="font-semibold text-lg mb-1 truncate">{album.name}</h3>
+                      <div className="flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-400">
+                        <span>{album.createdAt}</span>
+                        <span className="flex items-center gap-1"><ImageIcon className="w-3 h-3" /> {album.photoCount} Photos</span>
+                      </div>
                     </div>
-                  </div>
-                </GlassCard>
+                  </GlassCard>
+                </Link>
               </motion.div>
             ))}
           </div>

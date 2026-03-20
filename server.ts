@@ -13,9 +13,46 @@ import { createServer as createViteServer } from 'vite';
 import fs from 'fs';
 import rtspRelay from 'rtsp-relay';
 import { WebSocketServer } from 'ws';
+import admin from 'firebase-admin';
+import { createCanvas, loadImage, Image, ImageData, Canvas } from 'canvas';
+import * as faceapi from 'face-api.js';
+// import { faceDetectionNet, faceLandmark68Net, faceRecognitionNet } from 'face-api.js';
 // import PaytmChecksum from 'paytmchecksum';
 // import twilio from 'twilio';
 // import nodemailer from 'nodemailer';
+
+// Initialize Firebase Admin
+if (process.env.GOOGLE_CREDENTIALS_JSON) {
+  const serviceAccount = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+}
+const dbAdmin = admin.firestore();
+
+// Initialize face-api.js
+// @ts-ignore
+faceapi.env.monkeyPatch({ Canvas: Canvas, Image: Image, ImageData: ImageData, createCanvas: createCanvas, createImageData: createCanvas, loadImage: loadImage });
+
+async function loadModels() {
+  const modelDir = './models';
+  if (!fs.existsSync(modelDir)) fs.mkdirSync(modelDir);
+  
+  const modelUrl = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/';
+  const models = ['ssd_mobilenetv1_model-weights_manifest.json', 'ssd_mobilenetv1_model-shard1', 'ssd_mobilenetv1_model-shard2', 'face_landmark_68_model-weights_manifest.json', 'face_landmark_68_model-shard1', 'face_recognition_model-weights_manifest.json', 'face_recognition_model-shard1'];
+  for (const model of models) {
+    if (!fs.existsSync(path.join(modelDir, model))) {
+      console.log(`Downloading model ${model}...`);
+      const response = await axios.get(modelUrl + model, { responseType: 'arraybuffer' });
+      fs.writeFileSync(path.join(modelDir, model), response.data);
+    }
+  }
+
+  await faceapi.nets.ssdMobilenetv1.loadFromDisk(modelDir);
+  await faceapi.nets.faceLandmark68Net.loadFromDisk(modelDir);
+  await faceapi.nets.faceRecognitionNet.loadFromDisk(modelDir);
+}
+loadModels().catch(console.error);
 
 dotenv.config();
 
@@ -135,16 +172,16 @@ app.post('/api/share/email', async (req, res) => {
 */
 
 // Ensure local upload directories exist for fallback storage
-const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
-const ORIGINALS_DIR = path.join(UPLOADS_DIR, 'originals');
-const WEBP_DIR = path.join(UPLOADS_DIR, 'webp');
+// const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
+// const ORIGINALS_DIR = path.join(UPLOADS_DIR, 'originals');
+// const WEBP_DIR = path.join(UPLOADS_DIR, 'webp');
 
-if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-if (!fs.existsSync(ORIGINALS_DIR)) fs.mkdirSync(ORIGINALS_DIR, { recursive: true });
-if (!fs.existsSync(WEBP_DIR)) fs.mkdirSync(WEBP_DIR, { recursive: true });
+// if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+// if (!fs.existsSync(ORIGINALS_DIR)) fs.mkdirSync(ORIGINALS_DIR, { recursive: true });
+// if (!fs.existsSync(WEBP_DIR)) fs.mkdirSync(WEBP_DIR, { recursive: true });
 
 // Serve local uploads statically
-app.use('/uploads', express.static(UPLOADS_DIR));
+// app.use('/uploads', express.static(UPLOADS_DIR));
 
 // Configure Multer for memory storage
 const upload = multer({ 
@@ -153,9 +190,9 @@ const upload = multer({
 });
 
 // Configure Cloudflare R2 Client
-const R2_ACCOUNT_ID = process.env.CF_ACCOUNT_ID || process.env.R2_ACCOUNT_ID;
-const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || process.env.CF_API_KEY; 
-const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || process.env.CF_CACHE_API_TOKEN; 
+const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
+const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
+const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
 const BUCKET_NAME = process.env.R2_BUCKET_NAME?.trim();
 
 let s3Client: S3Client | null = null;
@@ -214,7 +251,7 @@ app.get('/api/debug-env', (req, res) => {
     R2_ACCESS_KEY_ID_LENGTH: process.env.R2_ACCESS_KEY_ID ? process.env.R2_ACCESS_KEY_ID.length : 0,
     CF_API_KEY: process.env.CF_API_KEY ? 'set' : 'not set',
     R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY ? 'set' : 'not set',
-    CF_CACHE_API_TOKEN: process.env.CF_CACHE_API_TOKEN ? 'set' : 'not set',
+    R2_BUCKET_NAME: process.env.R2_BUCKET_NAME ? 'set' : 'not set',
     GOOGLE_CREDENTIALS_JSON: process.env.GOOGLE_CREDENTIALS_JSON ? 'set' : 'not set',
   });
 });
@@ -246,9 +283,11 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
     // 1. Convert to WebP using Sharp
     let webpBuffer: Buffer;
     try {
+      console.log(`[Vision Config] Converting image to WebP. Original size: ${fileBuffer.length}`);
       webpBuffer = await sharp(fileBuffer)
         .webp({ quality: 80 })
         .toBuffer();
+      console.log(`[Vision Config] Conversion successful. New size: ${webpBuffer.length}`);
     } catch (err) {
       console.error("Error converting to WebP:", err);
       // Fallback to original buffer if conversion fails (e.g., unsupported RAW format by sharp)
@@ -299,32 +338,47 @@ To fix this:
     
     if (!uploadedToR2) {
       if (!s3Client) {
-        console.warn("R2 Client not configured. Falling back to local storage.");
+        throw new Error("R2 Client not configured. Cloudflare R2 storage is required.");
       }
-      // Ensure directories exist for these specific keys
-      const originalDir = path.dirname(path.join(UPLOADS_DIR, originalKey));
-      const webpKeyDir = path.dirname(path.join(UPLOADS_DIR, webpKey));
-      if (!fs.existsSync(originalDir)) fs.mkdirSync(originalDir, { recursive: true });
-      if (!fs.existsSync(webpKeyDir)) fs.mkdirSync(webpKeyDir, { recursive: true });
-      
-      fs.writeFileSync(path.join(UPLOADS_DIR, originalKey), fileBuffer);
-      fs.writeFileSync(path.join(UPLOADS_DIR, webpKey), webpBuffer);
+      throw new Error(`R2 Upload failed: ${r2ErrorMessage}`);
     }
 
     // 3. Run Google Vision Face Detection on WebP buffer
     let faces: any[] = [];
     if (visionClient) {
       try {
+        console.log(`[Vision Config] Sending image to Vision API. Buffer size: ${webpBuffer.length}, MimeType: ${mimeType}`);
         const [result] = await visionClient.faceDetection({ image: { content: webpBuffer } });
         const detectedFaces = result.faceAnnotations || [];
-        faces = detectedFaces.map((face, index) => ({
-          id: `face_${index}`,
-          joyLikelihood: face.joyLikelihood,
-          sorrowLikelihood: face.sorrowLikelihood,
-          angerLikelihood: face.angerLikelihood,
-          surpriseLikelihood: face.surpriseLikelihood,
-          boundingPoly: face.boundingPoly,
-        }));
+        // Generate embeddings for each face using face-api.js
+        const img = await loadImage(webpBuffer as any);
+        const detections = await faceapi.detectAllFaces(img as any).withFaceLandmarks().withFaceDescriptors();
+        
+        faces = detectedFaces.map((face, index) => {
+          const embedding = detections[index]?.descriptor ? Array.from(detections[index].descriptor) : [];
+          
+          // Store embedding in Firestore
+          if (embedding.length > 0) {
+            dbAdmin.collection('face_embeddings').add({
+              albumId: req.body.albumId,
+              photoId: fileId,
+              photographerId: userId,
+              embedding,
+              facePosition: face.boundingPoly,
+              createdAt: new Date().toISOString()
+            }).catch(console.error);
+          }
+
+          return {
+            id: `face_${index}`,
+            joyLikelihood: face.joyLikelihood,
+            sorrowLikelihood: face.sorrowLikelihood,
+            angerLikelihood: face.angerLikelihood,
+            surpriseLikelihood: face.surpriseLikelihood,
+            boundingPoly: face.boundingPoly,
+            embedding: embedding.length > 0
+          };
+        });
       } catch (err: any) {
         console.error("[Vision Config] Face detection failed for this image:", err.message);
       }
@@ -457,15 +511,8 @@ app.get('/api/images/url', async (req, res) => {
       return res.status(400).json({ error: 'Key is required' });
     }
 
-    // Check if the file exists locally first (fallback storage)
-    const localFilePath = path.join(UPLOADS_DIR, key);
-    if (fs.existsSync(localFilePath)) {
-      return res.json({ url: `/uploads/${key}` });
-    }
-
     if (!s3Client) {
-      // Fallback to local storage URL
-      return res.json({ url: `/uploads/${key}` });
+      throw new Error('R2 storage not configured');
     }
 
     try {
@@ -477,8 +524,8 @@ app.get('/api/images/url', async (req, res) => {
       const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
       res.json({ url: signedUrl });
     } catch (r2Error: any) {
-      console.warn("R2 getSignedUrl failed, falling back to local storage:", r2Error.message);
-      res.json({ url: `/uploads/${key}` });
+      console.error("R2 getSignedUrl failed:", r2Error.message);
+      throw new Error(`R2 getSignedUrl failed: ${r2Error.message}`);
     }
   } catch (error: any) {
     console.error("Error generating signed URL:", error);
@@ -507,39 +554,40 @@ async function startServer() {
     res.json({ success: true, wsPath: `/api/streams/${req.params.id}` });
   });
 
-  // Image Proxy Endpoint to avoid CORS issues during bulk download
-  app.get('/api/images/proxy', async (req, res) => {
+  // Endpoint to match face
+  app.post('/api/face/match', async (req, res) => {
     try {
-      const { key } = req.query;
-      if (!key || typeof key !== 'string') {
-        return res.status(400).json({ error: 'Key is required' });
+      const { image, albumId } = req.body;
+      if (!image || !albumId) {
+        return res.status(400).json({ error: 'Image and albumId are required' });
       }
 
-      let imageUrl: string;
-      const localFilePath = path.join(UPLOADS_DIR, key);
+      // 1. Generate embedding for live face
+      const imgBuffer = Buffer.from(image.split(',')[1], 'base64');
+      const img = await loadImage(imgBuffer as any);
+      const detection = await faceapi.detectSingleFace(img as any).withFaceLandmarks().withFaceDescriptor();
       
-      if (fs.existsSync(localFilePath)) {
-        // For local files, we can just read them directly
-        const contentType = key.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
-        res.setHeader('Content-Type', contentType);
-        return res.sendFile(localFilePath);
-      } else if (s3Client) {
-        const command = new GetObjectCommand({
-          Bucket: BUCKET_NAME,
-          Key: key,
-        });
-        imageUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-      } else {
-        return res.status(404).json({ error: 'Image not found' });
+      if (!detection) {
+        return res.status(400).json({ error: 'No face detected' });
       }
 
-      const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-      const contentType = response.headers['content-type'];
+      // 2. Query Firestore for embeddings in the album
+      const embeddingsSnapshot = await dbAdmin.collection('face_embeddings')
+        .where('albumId', '==', albumId)
+        .get();
       
-      res.setHeader('Content-Type', contentType);
-      res.send(response.data);
+      const matches = [];
+      for (const doc of embeddingsSnapshot.docs) {
+        const data = doc.data();
+        const distance = faceapi.euclideanDistance(detection.descriptor, data.embedding);
+        if (distance < 0.6) { // Threshold for 95%+ accuracy
+          matches.push(data.photoId);
+        }
+      }
+
+      res.json({ success: true, matches });
     } catch (error: any) {
-      console.error("Error proxying image:", error);
+      console.error("Face match error:", error);
       res.status(500).json({ error: error.message });
     }
   });

@@ -21,6 +21,8 @@ export interface PhotographerProfile {
   brand_color?: string;
   brand_font?: string;
   background_theme?: string;
+  background_image_url?: string;
+  theme_id?: string;
   is_public?: boolean;
   show_qr_code?: boolean;
   show_vcard?: boolean;
@@ -99,6 +101,7 @@ export interface PhotographerProfile {
     show_booking?: boolean;
     show_socials?: boolean;
     show_location?: boolean;
+    show_google_maps?: boolean;
     show_avatar?: boolean;
     show_bio?: boolean;
     show_custom_links?: boolean;

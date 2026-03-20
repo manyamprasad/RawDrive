@@ -131,7 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               photoURL: currentUser.photoURL,
               role: 'photographer',
               storageUsed: 0,
-              storageLimit: 10 * 1024 * 1024 * 1024, // Default 10 GB
+              storageLimit: 5 * 1024 * 1024 * 1024, // Free Tier: 5 GB
               createdAt: new Date().toISOString()
             };
             await setDoc(userRef, newProfile);
@@ -182,7 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         photoURL: null,
         role: 'photographer',
         storageUsed: 0,
-        storageLimit: 10 * 1024 * 1024 * 1024,
+        storageLimit: 5 * 1024 * 1024 * 1024, // Free Tier: 5 GB
         createdAt: new Date().toISOString(),
         phone,
         state,
