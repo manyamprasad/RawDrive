@@ -48,8 +48,8 @@ export default function PublicCompany() {
           );
           const eventsSnapshot = await getDocs(eventsQuery);
           const fetchedEvents = eventsSnapshot.docs
-            .map(doc => doc.data())
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
           setEvents(fetchedEvents);
         } else {
           setError('Company profile not found.');
@@ -409,6 +409,7 @@ export default function PublicCompany() {
                         <LazyImage 
                           photoKey={event.coverKey} 
                           alt={event.name} 
+                          isVideo={event.coverIsVideo}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       ) : (

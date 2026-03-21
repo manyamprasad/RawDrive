@@ -23,6 +23,7 @@ interface Photo {
   uploadedAt: string;
   isLiked?: boolean;
   size?: number;
+  isVideo?: boolean;
 }
 
 interface Comment {
@@ -39,6 +40,7 @@ interface Album {
   createdAt: string;
   photoCount: number;
   coverKey?: string | null;
+  coverIsVideo?: boolean;
   photographerId: string;
   eventId?: string;
   youtubeUrl?: string;
@@ -284,12 +286,12 @@ export default function AlbumView() {
     });
   };
 
-  const handleSetCover = async (photoKey: string, e: React.MouseEvent) => {
+  const handleSetCover = async (photoKey: string, isVideo: boolean, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!id || !album || !isOwner) return;
     try {
-      await updateDoc(doc(db, 'albums', id), { coverKey: photoKey });
-      setAlbum({ ...album, coverKey: photoKey });
+      await updateDoc(doc(db, 'albums', id), { coverKey: photoKey, coverIsVideo: isVideo });
+      setAlbum({ ...album, coverKey: photoKey, coverIsVideo: isVideo });
     } catch (err) {
       console.error("Error setting cover photo:", err);
     }
@@ -376,15 +378,26 @@ export default function AlbumView() {
         const formData = new FormData();
         formData.append('photo', file);
         formData.append('userId', user.uid);
+        formData.append('albumId', id);
 
         const response = await fetch('/api/upload', {
           method: 'POST',
           body: formData,
         });
 
-        if (!response.ok) throw new Error('Upload failed');
+        let data;
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          data = await response.json();
+        } else {
+          const text = await response.text();
+          throw new Error(`Server returned non-JSON response: ${response.status} ${response.statusText}. ${text.substring(0, 100)}...`);
+        }
 
-        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || `Upload failed with status ${response.status}`);
+        }
+
         const photoId = Math.random().toString(36).substring(2, 15);
         
         const photoDoc = {
@@ -397,7 +410,8 @@ export default function AlbumView() {
           faces: data.faces || [],
           uploadedAt: new Date().toISOString(),
           likes: 0,
-          size: data.size || 0
+          size: data.size || 0,
+          isVideo: data.isVideo || false
         };
 
         await setDoc(doc(db, 'photos', photoId), photoDoc);
@@ -644,6 +658,26 @@ export default function AlbumView() {
           </div>
           
           <div className="flex items-center gap-3">
+            {isOwner && (
+              <>
+                <Button variant="glass" size="sm" className="bg-white/5 border border-white/10 hover:bg-white/10" onClick={() => setIsYoutubeDialogOpen(true)}>
+                  <Youtube className="w-4 h-4 mr-2" /> Add YouTube
+                </Button>
+                <Button variant="glass" size="sm" className="bg-white/5 border border-white/10 hover:bg-white/10" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                  {isUploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <UploadCloud className="w-4 h-4 mr-2" />}
+                  Upload Media
+                </Button>
+                <input 
+                  type="file" 
+                  multiple 
+                  accept="image/*,video/*" 
+                  className="hidden" 
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  disabled={isUploading}
+                />
+              </>
+            )}
             <Button variant="glass" size="sm" className="bg-white/5 border border-white/10 hover:bg-white/10" onClick={() => setIsShareOpen(true)}>
               <Share2 className="w-4 h-4 mr-2" /> Share
             </Button>
@@ -658,6 +692,7 @@ export default function AlbumView() {
             <LazyImage 
               photoKey={album.coverKey} 
               alt="Album Cover" 
+              isVideo={album.coverIsVideo}
               className="w-full h-full"
             />
           ) : (
@@ -844,6 +879,7 @@ export default function AlbumView() {
                 <LazyImage 
                   photoKey={photo.webpKey} 
                   alt={`Photo ${photo.id}`} 
+                  isVideo={photo.isVideo}
                   className={cn(
                     "w-full object-cover transition-transform duration-500 group-hover:scale-105",
                     density === 'compact' ? "aspect-square" : density === 'comfortable' ? "aspect-[4/3]" : "aspect-[3/2]"
@@ -869,7 +905,7 @@ export default function AlbumView() {
               {isOwner && (
                 <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10">
                   <button
-                    onClick={(e) => handleSetCover(photo.webpKey, e)}
+                    onClick={(e) => handleSetCover(photo.webpKey, photo.isVideo || false, e)}
                     className="px-3 py-1.5 bg-black/40 hover:bg-white/20 text-white text-xs font-medium rounded-full backdrop-blur-md transition-colors"
                     title="Set as Cover"
                   >
@@ -972,7 +1008,10 @@ export default function AlbumView() {
                 <LazyImage 
                   photoKey={photos[selectedPhotoIndex].webpKey} 
                   alt={`Photo ${photos[selectedPhotoIndex].id}`} 
-                  className="max-w-full max-h-[70vh] object-contain rounded-2xl shadow-2xl border border-white/10"
+                  isVideo={photos[selectedPhotoIndex].isVideo}
+                  controls={true}
+                  className="max-w-full max-h-[70vh] rounded-2xl shadow-2xl border border-white/10"
+                  imgClassName="object-contain"
                 />
                 
                 <div className={cn(

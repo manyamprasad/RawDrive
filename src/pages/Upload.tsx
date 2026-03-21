@@ -201,11 +201,18 @@ export default function Upload() {
           body: formData,
         });
 
-        if (!response.ok) {
-          throw new Error('Upload failed');
+        let data;
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          data = await response.json();
+        } else {
+          const text = await response.text();
+          throw new Error(`Server returned non-JSON response: ${response.status} ${response.statusText}. ${text.substring(0, 100)}...`);
         }
 
-        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || `Upload failed with status ${response.status}`);
+        }
 
         // Save photo metadata to Firestore
         const photoId = Math.random().toString(36).substring(2, 15);

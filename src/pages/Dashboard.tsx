@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Input } from '@/components/ui/Input';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { PaymentDialog } from '@/components/PaymentDialog';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { collection, query, where, onSnapshot, orderBy, getDocs, deleteDoc, updateDoc, doc, increment, setDoc } from 'firebase/firestore';
@@ -20,6 +21,7 @@ interface Event {
   date: string;
   albums: number;
   coverKey?: string | null;
+  coverIsVideo?: boolean;
   createdAt?: string;
 }
 
@@ -103,6 +105,7 @@ export default function Dashboard() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [editName, setEditName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -137,6 +140,7 @@ export default function Dashboard() {
           date: new Date(data.createdAt).toLocaleDateString(),
           albums: data.albumCount || 0,
           coverKey: data.coverKey || null,
+          coverIsVideo: data.coverIsVideo || false,
           createdAt: data.createdAt
         });
       });
@@ -210,6 +214,18 @@ export default function Dashboard() {
         }
       }
     });
+  };
+
+  const handleToggleStreamStatus = async (streamId: string, currentStatus: string) => {
+    if (!user) return;
+    try {
+      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+      await updateDoc(doc(db, 'live_streams', streamId), {
+        status: newStatus
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'live_streams', user);
+    }
   };
 
   const handleLogout = async () => {
@@ -327,26 +343,42 @@ export default function Dashboard() {
     }
   };
 
+  const handleShare = (eventId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}/event/${eventId}`;
+    if (navigator.share) {
+      navigator.share({
+        title: 'Check out this event',
+        url: shareUrl,
+      }).catch(console.error);
+    } else {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        console.log('Link copied to clipboard!');
+      }).catch(console.error);
+    }
+  };
+
   if (!user) return null;
 
   return (
-    <div className="min-h-screen flex text-zinc-900 dark:text-zinc-50 font-sans">
+    <div className="min-h-screen flex text-zinc-900 dark:text-zinc-50 font-sans bg-zinc-50 dark:bg-black">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl flex flex-col hidden md:flex">
+      <aside className="w-64 border-r border-zinc-200/50 dark:border-zinc-800/50 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-2xl flex flex-col hidden md:flex">
         <div className="p-6 flex items-center gap-2">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-            <Camera className="text-white w-4 h-4" />
+          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center rotate-3 shadow-lg shadow-indigo-500/30">
+            <Camera className="text-white w-6 h-6 -rotate-3" />
           </div>
-          <span className="font-bold text-lg">RawDrive</span>
+          <span className="font-bold text-xl tracking-tight">RawDrive</span>
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-2">
           <button 
             onClick={() => setActiveTab('events')}
             className={cn(
-              "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors",
+              "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200",
               activeTab === 'events' 
-                ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400" 
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" 
                 : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
             )}
           >
@@ -357,9 +389,9 @@ export default function Dashboard() {
           <button 
             onClick={() => setActiveTab('live')}
             className={cn(
-              "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors",
+              "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200",
               activeTab === 'live' 
-                ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400" 
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" 
                 : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
             )}
           >
@@ -368,23 +400,23 @@ export default function Dashboard() {
           </button>
 
           <div className="pt-4 pb-2">
-            <p className="px-4 text-xs font-semibold text-zinc-400 uppercase tracking-wider">Settings</p>
+            <p className="px-4 text-xs font-bold text-zinc-400 uppercase tracking-wider">Settings</p>
           </div>
 
-          <Link to="/dashboard/profile" className="flex items-center gap-3 px-4 py-3 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-xl font-medium transition-colors">
+          <Link to="/dashboard/profile" className="flex items-center gap-3 px-4 py-3 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-xl font-medium transition-all duration-200">
             <User className="w-5 h-5" />
             Profile
           </Link>
-          <Link to="/dashboard/company" className="flex items-center gap-3 px-4 py-3 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-xl font-medium transition-colors">
+          <Link to="/dashboard/company" className="flex items-center gap-3 px-4 py-3 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-xl font-medium transition-all duration-200">
             <Building className="w-5 h-5" />
             Company Settings
           </Link>
         </nav>
 
         <div className="p-4">
-          <GlassCard intensity="low" className="p-4 bg-white/60 dark:bg-zinc-800/40 mb-4">
+          <GlassCard intensity="medium" className="p-4 bg-white/40 dark:bg-zinc-800/40 mb-4 rounded-2xl">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Storage</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Storage</span>
               <button 
                 onClick={handleStorageSync} 
                 disabled={isSyncing}
@@ -399,7 +431,7 @@ export default function Dashboard() {
                 {profile ? `${formatSize(profile.storageUsed || 0)} / ${profile.storageLimit > 0 ? formatSize(profile.storageLimit) : formatSize(5 * 1024 * 1024 * 1024)}` : 'Loading...'}
               </span>
               {profile && (
-                <span className="text-[10px] text-zinc-400">
+                <span className="text-[10px] text-zinc-400 font-bold">
                   {Math.round(((profile.storageUsed || 0) / (profile.storageLimit > 0 ? profile.storageLimit : 5 * 1024 * 1024 * 1024)) * 100)}%
                 </span>
               )}
@@ -412,17 +444,15 @@ export default function Dashboard() {
                   : '0%' }}
               ></div>
             </div>
-            <Link to="/pricing">
-              <Button variant="outline" size="sm" className="w-full mt-4 text-xs h-8">
+            <Button variant="outline" size="sm" className="w-full mt-4 text-xs h-8 rounded-xl" onClick={() => setIsPaymentDialogOpen(true)}>
                 Upgrade Plan
               </Button>
-            </Link>
           </GlassCard>
 
           <div className="flex items-center justify-between px-4 py-2">
             <div className="flex flex-col">
-              <span className="text-sm font-medium truncate max-w-[120px]">{user.displayName || user.email}</span>
-              <span className="text-xs text-zinc-500 flex items-center gap-1">
+              <span className="text-sm font-bold truncate max-w-[120px]">{user.displayName || user.email}</span>
+              <span className="text-xs text-zinc-500 flex items-center gap-1 font-medium">
                 <MapPin className="w-3 h-3" /> India
               </span>
             </div>
@@ -434,7 +464,7 @@ export default function Dashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-black">
         <div className="p-8 max-w-6xl mx-auto">
           {r2Configured === false && (
             <div className="mb-8 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-4 text-amber-600 dark:text-amber-400">
@@ -461,7 +491,6 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <ThemeToggle />
               {activeTab === 'events' ? (
                 <>
                   {selectedEvents.length > 0 && (
@@ -516,7 +545,7 @@ export default function Dashboard() {
                     transition={{ delay: i * 0.1 }}
                   >
                     <Link to={`/event/${event.id}`} className="block">
-                      <GlassCard intensity="low" className="group overflow-hidden bg-white/60 dark:bg-zinc-900/40 hover:border-indigo-500/50 transition-colors cursor-pointer">
+                      <GlassCard intensity="medium" className="group overflow-hidden bg-white/40 dark:bg-zinc-900/40 hover:border-indigo-500/50 transition-all duration-300 cursor-pointer rounded-2xl">
                         <div className="relative h-48 overflow-hidden">
                           <div className="absolute top-3 left-3 z-10">
                             <input 
@@ -534,6 +563,7 @@ export default function Dashboard() {
                             <LazyImage 
                               photoKey={event.coverKey} 
                               alt={event.name} 
+                              isVideo={event.coverIsVideo}
                               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                             />
                           ) : (
@@ -545,7 +575,7 @@ export default function Dashboard() {
                           )}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
                             <div className="flex gap-2 w-full justify-end">
-                              <Button variant="glass" size="sm" className="h-9 text-xs bg-white/20 hover:bg-white/30 text-white border-white/20">
+                              <Button variant="glass" size="sm" onClick={(e) => handleShare(event.id, e)} className="h-9 text-xs bg-white/20 hover:bg-white/30 text-white border-white/20 rounded-xl">
                                 <Share2 className="w-3 h-3 mr-1.5" /> Share
                               </Button>
                               <Button 
@@ -557,7 +587,7 @@ export default function Dashboard() {
                                   setEditingEvent(event);
                                   setEditName(event.name);
                                 }} 
-                                className="w-9 h-9 p-0 text-zinc-300 hover:text-white hover:bg-white/20 border-white/20"
+                                className="w-9 h-9 p-0 text-zinc-300 hover:text-white hover:bg-white/20 border-white/20 rounded-xl"
                               >
                                 <Pencil className="w-4 h-4" />
                               </Button>
@@ -565,7 +595,7 @@ export default function Dashboard() {
                                 variant="glass" 
                                 size="sm" 
                                 onClick={(e) => handleDeleteEvent(event.id, e)} 
-                                className="w-9 h-9 p-0 text-red-300 hover:text-red-200 hover:bg-red-500/30 border-white/20"
+                                className="w-9 h-9 p-0 text-red-300 hover:text-red-200 hover:bg-red-500/30 border-white/20 rounded-xl"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -573,8 +603,8 @@ export default function Dashboard() {
                           </div>
                         </div>
                         <div className="p-5">
-                          <h3 className="font-semibold text-lg mb-1 truncate">{event.name}</h3>
-                          <div className="flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-400">
+                          <h3 className="font-bold text-lg mb-1 truncate">{event.name}</h3>
+                          <div className="flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-400 font-medium">
                             <span>{event.date}</span>
                             <span className="flex items-center gap-1"><Folder className="w-3 h-3" /> {event.albums} Albums</span>
                           </div>
@@ -606,7 +636,7 @@ export default function Dashboard() {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: i * 0.1 }}
                     >
-                      <GlassCard intensity="low" className="p-6 bg-white/60 dark:bg-zinc-900/40">
+                      <GlassCard intensity="medium" className="p-6 bg-white/40 dark:bg-zinc-900/40 rounded-2xl">
                         <div className="flex items-start justify-between mb-4">
                           <div>
                             <h3 className="font-bold text-xl mb-1">{stream.name}</h3>
@@ -614,23 +644,41 @@ export default function Dashboard() {
                           </div>
                           <div className="flex items-center gap-2">
                             <span className={cn(
-                              "px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                              stream.status === 'active' ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                              "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                              stream.status === 'active' ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
                             )}>
                               {stream.status}
                             </span>
+                            <button
+                              onClick={() => handleToggleStreamStatus(stream.id, stream.status)}
+                              className={cn(
+                                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2",
+                                stream.status === 'active' ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-700"
+                              )}
+                              role="switch"
+                              aria-checked={stream.status === 'active'}
+                            >
+                              <span className="sr-only">Toggle stream status</span>
+                              <span
+                                aria-hidden="true"
+                                className={cn(
+                                  "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
+                                  stream.status === 'active' ? "translate-x-4" : "translate-x-0"
+                                )}
+                              />
+                            </button>
                             <Button 
                               variant="ghost" 
                               size="icon" 
                               onClick={() => handleDeleteStream(stream.id)}
-                              className="w-8 h-8 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                              className="w-8 h-8 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
                         </div>
                         
-                        <div className="aspect-video bg-black rounded-xl overflow-hidden relative group">
+                        <div className="aspect-video bg-black rounded-2xl overflow-hidden relative group">
                           <RtspPlayer 
                             streamId={stream.id} 
                             rtspUrl={stream.rtspUrl} 
@@ -643,11 +691,11 @@ export default function Dashboard() {
                         </div>
 
                         <div className="mt-4 flex items-center justify-between">
-                          <div className="flex items-center gap-4 text-xs text-zinc-500">
+                          <div className="flex items-center gap-4 text-xs text-zinc-500 font-medium">
                             <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> Low Latency</span>
                             <span className="flex items-center gap-1"><HardDrive className="w-3 h-3" /> 1080p</span>
                           </div>
-                          <Button variant="outline" size="sm" className="text-xs">
+                          <Button variant="outline" size="sm" className="text-xs rounded-xl">
                             Open in Player
                           </Button>
                         </div>
@@ -782,6 +830,30 @@ export default function Dashboard() {
           setConfirmDialog(prev => ({ ...prev, isOpen: false }));
         }}
         onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      <PaymentDialog 
+        isOpen={isPaymentDialogOpen} 
+        onClose={() => setIsPaymentDialogOpen(false)} 
+        onConfirm={async (details) => {
+          try {
+            const res = await fetch('/api/payments/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: user.uid, amount: 500, ...details })
+            });
+            const data = await res.json();
+            if (data.success) {
+              window.open(data.redirectUrl, 'payment_popup', 'width=600,height=700,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');
+              setIsPaymentDialogOpen(false);
+            } else {
+              alert('Payment initiation failed: ' + data.error);
+            }
+          } catch (err) {
+            console.error(err);
+            alert('Payment initiation failed');
+          }
+        }}
       />
     </div>
   );

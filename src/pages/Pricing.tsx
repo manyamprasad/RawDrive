@@ -4,15 +4,36 @@ import { motion } from 'motion/react';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SEOManager } from '../components/SEOManager';
+import { useAuth } from '@/contexts/AuthContext';
 
 const PLANS = [
-  { id: 'starter', name: "Starter", storage: "500GB", price: "₹24", desc: "Perfect for solo photographers beginning their spatial journey.", features: ["5 Active Spatial Galleries", "500GB SSD Storage", "4K Resolution Playback", "Standard CDN Delivery"] },
-  { id: 'pro', name: "Pro", storage: "2TB", price: "₹59", desc: "Advanced delivery for professional studios and high-volume artists.", popular: true, features: ["Unlimited Active Galleries", "2TB Lossless Storage", "8K Spatial Rendering", "Custom Domain & Branding", "Priority 10Gbps CDN"] },
-  { id: 'studio', name: "Studio", storage: "10TB", price: "₹149", desc: "Enterprise-grade infrastructure for large teams and agencies.", features: ["10TB Unified Storage", "Multi-Seat Management", "API for Workflow Integration", "Dedicated Success Manager"] },
+  { id: 'starter', name: "Starter", storage: "500GB", price: "₹499", amount: 24, desc: "Perfect for solo photographers beginning their spatial journey.", features: ["5 Active Spatial Galleries", "500GB SSD Storage", "4K Resolution Playback", "Standard CDN Delivery"] },
+  { id: 'pro', name: "Pro", storage: "1TB", price: "₹999", amount: 59, desc: "Advanced delivery for professional studios and high-volume artists.", popular: true, features: ["Unlimited Active Galleries", "2TB Lossless Storage", "8K Spatial Rendering", "Custom Domain & Branding", "Priority 10Gbps CDN"] },
+  { id: 'studio', name: "Studio", storage: "10TB", price: "₹149", amount: 149, desc: "Enterprise-grade infrastructure for large teams and agencies.", features: ["10TB Unified Storage", "Multi-Seat Management", "API for Workflow Integration", "Dedicated Success Manager"] },
 ];
 
 export default function Pricing() {
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('yearly');
+  const { user } = useAuth();
+
+  const handlePurchase = async (amount: number) => {
+    try {
+      const res = await fetch('/api/payments/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user?.uid, amount })
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.open(data.redirectUrl, 'payment_popup', 'width=600,height=700,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');
+      } else {
+        alert('Payment initiation failed: ' + data.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Payment initiation failed');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#030406] text-white font-sans pb-24">
@@ -78,7 +99,10 @@ export default function Pricing() {
                   </li>
                 ))}
               </ul>
-              <button className={cn("w-full py-4 rounded-full font-semibold transition-all", plan.popular ? "bg-white text-black hover:bg-white/90" : "bg-white/5 border border-white/10 hover:bg-white/10")}>
+              <button 
+                onClick={() => plan.id !== 'studio' && handlePurchase(plan.amount)}
+                className={cn("w-full py-4 rounded-full font-semibold transition-all", plan.popular ? "bg-white text-black hover:bg-white/90" : "bg-white/5 border border-white/10 hover:bg-white/10")}
+              >
                 {plan.id === 'studio' ? 'Contact Sales' : 'Get Started'}
               </button>
             </motion.div>

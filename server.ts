@@ -16,6 +16,8 @@ import { WebSocketServer } from 'ws';
 import admin from 'firebase-admin';
 import { createCanvas, loadImage, Image, ImageData, Canvas } from 'canvas';
 import * as faceapi from 'face-api.js';
+import axios from 'axios';
+import crypto from 'crypto';
 // import { faceDetectionNet, faceLandmark68Net, faceRecognitionNet } from 'face-api.js';
 // import PaytmChecksum from 'paytmchecksum';
 // import twilio from 'twilio';
@@ -39,7 +41,7 @@ async function loadModels() {
   if (!fs.existsSync(modelDir)) fs.mkdirSync(modelDir);
   
   const modelUrl = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/';
-  const models = ['ssd_mobilenetv1_model-weights_manifest.json', 'ssd_mobilenetv1_model-shard1', 'ssd_mobilenetv1_model-shard2', 'face_landmark_68_model-weights_manifest.json', 'face_landmark_68_model-shard1', 'face_recognition_model-weights_manifest.json', 'face_recognition_model-shard1'];
+  const models = ['ssd_mobilenetv1_model-weights_manifest.json', 'ssd_mobilenetv1_model-shard1', 'ssd_mobilenetv1_model-shard2', 'face_landmark_68_model-weights_manifest.json', 'face_landmark_68_model-shard1', 'face_recognition_model-weights_manifest.json', 'face_recognition_model-shard1', 'face_recognition_model-shard2'];
   for (const model of models) {
     if (!fs.existsSync(path.join(modelDir, model))) {
       console.log(`Downloading model ${model}...`);
@@ -62,7 +64,8 @@ const { app, getWss } = expressWs(express());
 const PORT = 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // --- Gateway Config ---
 /*
@@ -82,60 +85,77 @@ const emailTransporter = nodemailer.createTransport({
 const twilioClient = null;
 const emailTransporter = null;
 
-import axios from 'axios';
-import crypto from 'crypto';
-
 import { StandardCheckoutClient, Env, StandardCheckoutPayRequest } from '@phonepe-pg/pg-sdk-node';
 import { randomUUID } from 'crypto';
 
 // ... (existing config)
 
 // --- API Routes ---
-app.post('/api/payment/initiate', async (req, res) => {
-  const { amount, userId, gateway } = req.body;
+app.post('/api/payments/create', async (req, res) => {
+  const { userId, amount, referenceId, mobileNumber, email, expiryTime } = req.body;
   
-  if (gateway === 'paytm') {
-    // TODO: Implement Paytm (Disabled)
-    return res.status(503).json({ success: false, message: 'Paytm is temporarily disabled' });
-  } else if (gateway === 'phonepe') {
-    // PhonePe implementation using the new OAuth SDK
-    const clientId = process.env.PHONEPE_CLIENT_ID;
-    const clientSecret = process.env.PHONEPE_CLIENT_SECRET;
-    const clientVersion = parseInt(process.env.PHONEPE_CLIENT_VERSION || '1', 10);
-    
-    if (!clientId || !clientSecret) {
-      return res.status(500).json({ error: 'PhonePe OAuth credentials not configured. Please set PHONEPE_CLIENT_ID and PHONEPE_CLIENT_SECRET.' });
-    }
+  if (!amount || typeof amount !== 'number') {
+    return res.status(400).json({ error: 'Amount is required' });
+  }
+  
+  const clientId = process.env.PHONEPE_CLIENT_ID;
+  const clientSecret = process.env.PHONEPE_CLIENT_SECRET;
+  const saltKey = process.env.PHONEPE_SALT_KEY;
+  const saltIndex = process.env.PHONEPE_SALT_INDEX || '1';
+  
+  if (!clientId || !clientSecret || !saltKey) {
+    return res.status(500).json({ error: 'PhonePe credentials not configured.' });
+  }
 
-    try {
-      // Use Env.SANDBOX for testing, Env.PRODUCTION for live
-      const env = process.env.NODE_ENV === 'production' ? Env.PRODUCTION : Env.SANDBOX;
-      
-      const client = StandardCheckoutClient.getInstance(clientId, clientSecret, clientVersion, env);
-      
-      const merchantOrderId = `TXN_${Date.now()}_${randomUUID().substring(0, 8)}`;
-      const redirectUrl = `${process.env.APP_URL}/payment/callback`;
-      
-      const request = StandardCheckoutPayRequest.builder()
-        .merchantOrderId(merchantOrderId)
-        .amount(amount * 100) // Amount in paise
-        .redirectUrl(redirectUrl)
-        .build();
-        
-      const response = await client.pay(request);
-      
-      // Return the redirect URL to the frontend
-      res.json({ 
-        success: true, 
-        redirectUrl: response.redirectUrl,
-        merchantOrderId 
-      });
-    } catch (err: any) {
-      console.error('PhonePe Payment Error:', err);
-      res.status(500).json({ error: err.message || 'Payment initiation failed' });
-    }
-  } else {
-    res.status(400).json({ error: 'Invalid gateway' });
+  try {
+    const merchantOrderId = referenceId || `TXN_${Date.now()}_${randomUUID().substring(0, 8)}`;
+    const redirectUrl = `${process.env.APP_URL}/payment/callback`;
+    
+    const payload = {
+      merchantId: clientId,
+      merchantTransactionId: merchantOrderId,
+      amount: amount * 100,
+      callbackUrl: redirectUrl,
+      paymentInstrument: { type: "PAY_PAGE" },
+      // User-provided structure
+      expireAfter: 1200,
+      paymentFlow: {
+        type: "PG_CHECKOUT",
+        message: "Payment message used for collect requests",
+        merchantUrls: { redirectUrl: redirectUrl }
+      },
+      disablePaymentRetry: true,
+      metaInfo: {
+        udf1: "additional-information-1",
+        // ... (rest of udf)
+      }
+    };
+
+    const base64Payload = Buffer.from(JSON.stringify(payload)).toString('base64');
+    const stringToHash = base64Payload + '/pg/v1/pay' + saltKey;
+    const xVerify = crypto.createHash('sha256').update(stringToHash).digest('hex') + '###' + saltIndex;
+
+    const response = await axios.post(
+      process.env.NODE_ENV === 'production' 
+        ? 'https://api.phonepe.com/apis/hermes/pg/v1/pay' 
+        : 'https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay',
+      { request: base64Payload },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-VERIFY': xVerify
+        }
+      }
+    );
+
+    res.json({ 
+      success: true, 
+      redirectUrl: response.data.data.instrumentResponse.redirectInfo.url,
+      merchantOrderId 
+    });
+  } catch (err: any) {
+    console.error('[PhonePe] Payment Error:', err.response?.data || err.message);
+    res.status(500).json({ error: err.message || 'Payment initiation failed' });
   }
 });
 
@@ -260,7 +280,16 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', r2Configured: !!s3Client });
 });
 
-app.post('/api/upload', upload.single('photo'), async (req, res) => {
+app.post('/api/upload', (req, res, next) => {
+  upload.single('photo')(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ error: `Upload error: ${err.message}` });
+    } else if (err) {
+      return res.status(500).json({ error: `Unknown upload error: ${err.message}` });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
     const { userId } = req.body;
     if (!req.file) {
@@ -280,18 +309,22 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
     const originalKey = `${prefix}originals/${fileId}_${originalName}`;
     const webpKey = `${prefix}webp/${fileId}.webp`;
 
-    // 1. Convert to WebP using Sharp
-    let webpBuffer: Buffer;
-    try {
-      console.log(`[Vision Config] Converting image to WebP. Original size: ${fileBuffer.length}`);
-      webpBuffer = await sharp(fileBuffer)
-        .webp({ quality: 80 })
-        .toBuffer();
-      console.log(`[Vision Config] Conversion successful. New size: ${webpBuffer.length}`);
-    } catch (err) {
-      console.error("Error converting to WebP:", err);
-      // Fallback to original buffer if conversion fails (e.g., unsupported RAW format by sharp)
-      webpBuffer = fileBuffer;
+    // 1. Convert to WebP using Sharp (only for images)
+    let webpBuffer: Buffer = fileBuffer;
+    const isVideo = mimeType.startsWith('video/');
+    
+    if (!isVideo) {
+      try {
+        console.log(`[Vision Config] Converting image to WebP. Original size: ${fileBuffer.length}`);
+        webpBuffer = await sharp(fileBuffer)
+          .webp({ quality: 80 })
+          .toBuffer();
+        console.log(`[Vision Config] Conversion successful. New size: ${webpBuffer.length}`);
+      } catch (err) {
+        console.error("Error converting to WebP:", err);
+        // Fallback to original buffer if conversion fails (e.g., unsupported RAW format by sharp)
+        webpBuffer = fileBuffer;
+      }
     }
 
     // 2. Upload to Cloudflare R2 or Local File System
@@ -307,12 +340,12 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
           ContentType: mimeType,
         }));
 
-        // Upload WebP
+        // Upload WebP (or original video buffer if it's a video)
         await s3Client.send(new PutObjectCommand({
           Bucket: BUCKET_NAME,
           Key: webpKey,
           Body: webpBuffer,
-          ContentType: 'image/webp',
+          ContentType: isVideo ? mimeType : 'image/webp',
         }));
         uploadedToR2 = true;
       } catch (r2Error: any) {
@@ -345,74 +378,77 @@ To fix this:
 
     // 3. Run Google Vision Face Detection on WebP buffer
     let faces: any[] = [];
-    if (visionClient) {
-      try {
-        console.log(`[Vision Config] Sending image to Vision API. Buffer size: ${webpBuffer.length}, MimeType: ${mimeType}`);
-        const [result] = await visionClient.faceDetection({ image: { content: webpBuffer } });
-        const detectedFaces = result.faceAnnotations || [];
-        // Generate embeddings for each face using face-api.js
-        const img = await loadImage(webpBuffer as any);
-        const detections = await faceapi.detectAllFaces(img as any).withFaceLandmarks().withFaceDescriptors();
-        
-        faces = detectedFaces.map((face, index) => {
-          const embedding = detections[index]?.descriptor ? Array.from(detections[index].descriptor) : [];
+    if (!isVideo) {
+      if (visionClient) {
+        try {
+          console.log(`[Vision Config] Sending image to Vision API. Buffer size: ${webpBuffer.length}, MimeType: ${mimeType}`);
+          const [result] = await visionClient.faceDetection({ image: { content: webpBuffer } });
+          const detectedFaces = result.faceAnnotations || [];
+          // Generate embeddings for each face using face-api.js
+          const jpegBuffer = await sharp(fileBuffer).jpeg().toBuffer();
+          const img = await loadImage(jpegBuffer as any);
+          const detections = await faceapi.detectAllFaces(img as any).withFaceLandmarks().withFaceDescriptors();
           
-          // Store embedding in Firestore
-          if (embedding.length > 0) {
-            dbAdmin.collection('face_embeddings').add({
-              albumId: req.body.albumId,
-              photoId: fileId,
-              photographerId: userId,
-              embedding,
-              facePosition: face.boundingPoly,
-              createdAt: new Date().toISOString()
-            }).catch(console.error);
-          }
+          faces = detectedFaces.map((face, index) => {
+            const embedding = detections[index]?.descriptor ? Array.from(detections[index].descriptor) : [];
+            
+            // Store embedding in Firestore
+            if (embedding.length > 0) {
+              dbAdmin.collection('face_embeddings').add({
+                albumId: req.body.albumId,
+                photoId: fileId,
+                photographerId: userId,
+                embedding,
+                facePosition: face.boundingPoly,
+                createdAt: new Date().toISOString()
+              }).catch(console.error);
+            }
 
-          return {
+            return {
+              id: `face_${index}`,
+              joyLikelihood: face.joyLikelihood,
+              sorrowLikelihood: face.sorrowLikelihood,
+              angerLikelihood: face.angerLikelihood,
+              surpriseLikelihood: face.surpriseLikelihood,
+              boundingPoly: face.boundingPoly,
+              embedding: embedding.length > 0
+            };
+          });
+        } catch (err: any) {
+          console.error("[Vision Config] Face detection failed for this image:", err.message);
+        }
+      } else if (GOOGLE_API_KEY) {
+        try {
+          const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              requests: [
+                {
+                  image: { content: webpBuffer.toString('base64') },
+                  features: [{ type: 'FACE_DETECTION' }]
+                }
+              ]
+            })
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Vision API REST error: ${response.status} ${response.statusText}`);
+          }
+          
+          const result = await response.json();
+          const detectedFaces = result.responses?.[0]?.faceAnnotations || [];
+          faces = detectedFaces.map((face: any, index: number) => ({
             id: `face_${index}`,
             joyLikelihood: face.joyLikelihood,
             sorrowLikelihood: face.sorrowLikelihood,
             angerLikelihood: face.angerLikelihood,
             surpriseLikelihood: face.surpriseLikelihood,
             boundingPoly: face.boundingPoly,
-            embedding: embedding.length > 0
-          };
-        });
-      } catch (err: any) {
-        console.error("[Vision Config] Face detection failed for this image:", err.message);
-      }
-    } else if (GOOGLE_API_KEY) {
-      try {
-        const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_API_KEY}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            requests: [
-              {
-                image: { content: webpBuffer.toString('base64') },
-                features: [{ type: 'FACE_DETECTION' }]
-              }
-            ]
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Vision API REST error: ${response.status} ${response.statusText}`);
+          }));
+        } catch (err: any) {
+          console.error("[Vision Config] REST Face detection failed:", err.message);
         }
-        
-        const result = await response.json();
-        const detectedFaces = result.responses?.[0]?.faceAnnotations || [];
-        faces = detectedFaces.map((face: any, index: number) => ({
-          id: `face_${index}`,
-          joyLikelihood: face.joyLikelihood,
-          sorrowLikelihood: face.sorrowLikelihood,
-          angerLikelihood: face.angerLikelihood,
-          surpriseLikelihood: face.surpriseLikelihood,
-          boundingPoly: face.boundingPoly,
-        }));
-      } catch (err: any) {
-        console.error("[Vision Config] REST Face detection failed:", err.message);
       }
     }
 
@@ -424,7 +460,8 @@ To fix this:
       faces,
       size: file.size,
       originalName,
-      r2ErrorMessage
+      r2ErrorMessage,
+      isVideo
     });
 
   } catch (error: any) {
@@ -533,6 +570,45 @@ app.get('/api/images/url', async (req, res) => {
   }
 });
 
+// Endpoint to proxy images for download to avoid CORS issues
+app.get('/api/images/proxy', async (req, res) => {
+  try {
+    const { key } = req.query;
+    if (!key || typeof key !== 'string') {
+      return res.status(400).json({ error: 'Key is required' });
+    }
+
+    if (!s3Client) {
+      throw new Error('R2 storage not configured');
+    }
+
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+    });
+
+    const response = await s3Client.send(command);
+    
+    if (response.ContentType) {
+      res.setHeader('Content-Type', response.ContentType);
+    }
+    if (response.ContentLength) {
+      res.setHeader('Content-Length', response.ContentLength);
+    }
+    
+    // Stream the response body to the client
+    if (response.Body) {
+      // @ts-ignore
+      response.Body.pipe(res);
+    } else {
+      res.status(404).json({ error: 'Image not found' });
+    }
+  } catch (error: any) {
+    console.error("Error proxying image:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Vite middleware for development
 async function startServer() {
   // RTSP Relay Setup
@@ -605,6 +681,14 @@ async function startServer() {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
+
+  // Custom error handler to return JSON instead of HTML
+  app.use((err: any, req: any, res: any, next: any) => {
+    console.error('Unhandled error:', err);
+    res.status(err.status || 500).json({
+      error: err.message || 'Internal Server Error'
+    });
+  });
 
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);

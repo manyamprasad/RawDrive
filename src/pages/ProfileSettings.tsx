@@ -235,13 +235,23 @@ export default function ProfileSettings() {
         body: formData,
       });
 
-      if (!response.ok) throw new Error('Upload failed');
+      let data;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(`Server returned non-JSON response: ${response.status} ${response.statusText}. ${text.substring(0, 100)}...`);
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || `Upload failed with status ${response.status}`);
+      }
       
-      const data = await response.json();
       setProfile(prev => ({ ...prev, background_image_url: data.webpKey }));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading background:", error);
-      setError('Failed to upload background. Please try again.');
+      setError(error.message || 'Failed to upload background. Please try again.');
     } finally {
       setUploadingBackground(false);
     }
@@ -260,13 +270,23 @@ export default function ProfileSettings() {
         body: formData,
       });
 
-      if (!response.ok) throw new Error('Upload failed');
+      let data;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(`Server returned non-JSON response: ${response.status} ${response.statusText}. ${text.substring(0, 100)}...`);
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || `Upload failed with status ${response.status}`);
+      }
       
-      const data = await response.json();
       setProfile(prev => ({ ...prev, avatar_url: data.webpKey }));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading avatar:", error);
-      setError('Failed to upload avatar. Please try again.');
+      setError(error.message || 'Failed to upload avatar. Please try again.');
     } finally {
       setUploadingAvatar(false);
     }

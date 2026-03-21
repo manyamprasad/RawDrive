@@ -153,20 +153,21 @@ service cloud.firestore {
 
     function isValidEvent(data) {
       return hasRequiredFields(['id', 'photographerId', 'name', 'date', 'albumCount', 'createdAt']) &&
-             hasOnlyAllowedFields(['id', 'photographerId', 'name', 'date', 'coverPhotoUrl', 'coverKey', 'albumCount', 'isPublic', 'createdAt']) &&
+             hasOnlyAllowedFields(['id', 'photographerId', 'name', 'date', 'coverPhotoUrl', 'coverKey', 'coverIsVideo', 'albumCount', 'isPublic', 'createdAt']) &&
              data.photographerId == request.auth.uid &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
              data.albumCount is number &&
              data.albumCount >= 0 &&
              (!('isPublic' in data) || data.isPublic is bool) &&
              (!('coverKey' in data) || data.coverKey is string) &&
+             (!('coverIsVideo' in data) || data.coverIsVideo is bool) &&
              (!('coverPhotoUrl' in data) || data.coverPhotoUrl is string) &&
              data.createdAt is string;
     }
 
     function isValidAlbum(data) {
       return hasRequiredFields(['id', 'eventId', 'photographerId', 'name', 'photoCount', 'createdAt']) &&
-             hasOnlyAllowedFields(['id', 'eventId', 'photographerId', 'name', 'photoCount', 'createdAt', 'youtubeUrl', 'youtubeUrls', 'coverKey']) &&
+             hasOnlyAllowedFields(['id', 'eventId', 'photographerId', 'name', 'photoCount', 'createdAt', 'youtubeUrl', 'youtubeUrls', 'coverKey', 'coverIsVideo']) &&
              data.photographerId == request.auth.uid &&
              data.eventId is string &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
@@ -175,12 +176,13 @@ service cloud.firestore {
              (!('youtubeUrls' in data) || data.youtubeUrls is list) &&
              (!('youtubeUrl' in data) || data.youtubeUrl is string) &&
              (!('coverKey' in data) || data.coverKey is string) &&
+             (!('coverIsVideo' in data) || data.coverIsVideo is bool) &&
              data.createdAt is string;
     }
 
     function isValidPhoto(data) {
       return hasRequiredFields(['id', 'albumId', 'eventId', 'photographerId', 'originalKey', 'webpKey', 'size', 'likes', 'uploadedAt']) &&
-             hasOnlyAllowedFields(['id', 'albumId', 'eventId', 'photographerId', 'originalUrl', 'webpUrl', 'originalKey', 'webpKey', 'size', 'likes', 'faces', 'uploadedAt']) &&
+             hasOnlyAllowedFields(['id', 'albumId', 'eventId', 'photographerId', 'originalUrl', 'webpUrl', 'originalKey', 'webpKey', 'size', 'likes', 'faces', 'uploadedAt', 'isVideo']) &&
              data.photographerId == request.auth.uid &&
              data.albumId is string &&
              data.eventId is string &&
@@ -193,6 +195,7 @@ service cloud.firestore {
              data.likes is number &&
              data.likes >= 0 &&
              (!('faces' in data) || data.faces is list) &&
+             (!('isVideo' in data) || data.isVideo is bool) &&
              data.uploadedAt is string;
     }
 

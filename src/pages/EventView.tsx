@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Input } from '@/components/ui/Input';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { doc, getDoc, collection, query, where, getDocs, orderBy, deleteDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/firebase';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, deleteDoc, updateDoc, addDoc, setDoc } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '@/firebase';
 import { getThemeClass } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { LazyImage } from '@/components/LazyImage';
@@ -22,6 +22,7 @@ interface Album {
   photoCount: number;
   createdAt: string;
   coverKey?: string | null;
+  coverIsVideo?: boolean;
 }
 
 interface Event {
@@ -30,6 +31,7 @@ interface Event {
   date: string;
   albumCount: number;
   coverKey?: string | null;
+  coverIsVideo?: boolean;
   photographerId: string;
 }
 
@@ -47,6 +49,8 @@ export default function EventView() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [editEventName, setEditEventName] = useState('');
   const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
+  const [isAddingAlbum, setIsAddingAlbum] = useState(false);
+  const [newAlbumName, setNewAlbumName] = useState('');
   const [editName, setEditName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -99,7 +103,7 @@ export default function EventView() {
           
         } catch (error) {
           console.error("Error deleting selected albums:", error);
-          alert("Failed to delete some albums.");
+          handleFirestoreError(error, OperationType.DELETE, 'albums');
         }
       }
     });
@@ -137,7 +141,7 @@ export default function EventView() {
           
         } catch (error) {
           console.error("Error deleting album:", error);
-          alert("Failed to delete album.");
+          handleFirestoreError(error, OperationType.DELETE, 'albums');
         }
       }
     });
@@ -156,7 +160,46 @@ export default function EventView() {
       setEditingAlbum(null);
     } catch (error) {
       console.error("Error updating album:", error);
-      alert("Failed to update album.");
+      handleFirestoreError(error, OperationType.UPDATE, 'albums');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddAlbum = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!event || !newAlbumName.trim() || !user || !id) return;
+    
+    setIsSaving(true);
+    try {
+      const albumRef = doc(collection(db, 'albums'));
+      await setDoc(albumRef, {
+        id: albumRef.id,
+        eventId: id,
+        photographerId: user.uid,
+        name: newAlbumName.trim(),
+        photoCount: 0,
+        createdAt: new Date().toISOString()
+      });
+      
+      await updateDoc(doc(db, 'events', id), {
+        albumCount: (event.albumCount || 0) + 1
+      });
+      
+      setAlbums(prev => [{
+        id: albumRef.id,
+        name: newAlbumName.trim(),
+        photoCount: 0,
+        createdAt: new Date().toLocaleDateString(),
+        coverKey: null
+      }, ...prev]);
+      
+      setEvent(prev => prev ? { ...prev, albumCount: (prev.albumCount || 0) + 1 } : null);
+      setNewAlbumName('');
+      setIsAddingAlbum(false);
+    } catch (error) {
+      console.error("Error adding album:", error);
+      handleFirestoreError(error, OperationType.CREATE, 'albums');
     } finally {
       setIsSaving(false);
     }
@@ -175,7 +218,7 @@ export default function EventView() {
       setEditingEvent(null);
     } catch (error) {
       console.error("Error updating event:", error);
-      alert("Failed to update event.");
+      handleFirestoreError(error, OperationType.UPDATE, 'events');
     } finally {
       setIsSaving(false);
     }
@@ -225,7 +268,8 @@ export default function EventView() {
             name: albumDoc.data().name,
             photoCount: albumDoc.data().photoCount || 0,
             createdAt: albumDoc.data().createdAt,
-            coverKey: albumDoc.data().coverKey || null
+            coverKey: albumDoc.data().coverKey || null,
+            coverIsVideo: albumDoc.data().coverIsVideo || false
           };
         });
         
@@ -345,6 +389,7 @@ export default function EventView() {
             <LazyImage 
               photoKey={event.coverKey} 
               alt="Event Cover" 
+              isVideo={event.coverIsVideo}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -394,15 +439,22 @@ export default function EventView() {
       <main className="max-w-7xl mx-auto px-6 mt-12">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
           <h2 className="text-2xl font-bold tracking-tight">Albums</h2>
-          {selectedAlbums.length > 0 && isOwner && (
-            <Button 
-              variant="outline" 
-              onClick={handleDeleteSelected}
-              className="shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 border-red-200 dark:border-red-900/50"
-            >
-              <Trash2 className="w-4 h-4 mr-2" /> Delete Selected ({selectedAlbums.length})
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            {isOwner && (
+              <Button onClick={() => setIsAddingAlbum(true)}>
+                Add Album
+              </Button>
+            )}
+            {selectedAlbums.length > 0 && isOwner && (
+              <Button 
+                variant="outline" 
+                onClick={handleDeleteSelected}
+                className="shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 border-red-200 dark:border-red-900/50"
+              >
+                <Trash2 className="w-4 h-4 mr-2" /> Delete Selected ({selectedAlbums.length})
+              </Button>
+            )}
+          </div>
         </div>
 
         {albums.length === 0 ? (
@@ -442,6 +494,7 @@ export default function EventView() {
                       <LazyImage 
                         photoKey={album.coverKey} 
                         alt={album.name} 
+                        isVideo={album.coverIsVideo}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
@@ -506,6 +559,47 @@ export default function EventView() {
         }}
         onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
       />
+
+      {/* Add Album Modal */}
+      {isAddingAlbum && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-zinc-900 rounded-2xl p-6 w-full max-w-md shadow-xl border border-zinc-200 dark:border-zinc-800"
+          >
+            <h3 className="text-xl font-semibold mb-4 text-zinc-900 dark:text-zinc-100">Add New Album</h3>
+            <form onSubmit={handleAddAlbum}>
+              <div className="mb-6">
+                <Input
+                  value={newAlbumName}
+                  onChange={(e) => setNewAlbumName(e.target.value)}
+                  placeholder="Album Name"
+                  className="w-full"
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsAddingAlbum(false)}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!newAlbumName.trim() || isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Add Album
+                </Button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
 
       {/* Edit Album Modal */}
       {editingAlbum && (

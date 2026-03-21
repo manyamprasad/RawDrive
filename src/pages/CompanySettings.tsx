@@ -187,13 +187,23 @@ export default function CompanySettings() {
         body: formData,
       });
 
-      if (!response.ok) throw new Error('Upload failed');
+      let data;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(`Server returned non-JSON response: ${response.status} ${response.statusText}. ${text.substring(0, 100)}...`);
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || `Upload failed with status ${response.status}`);
+      }
       
-      const data = await response.json();
       setProfile(prev => ({ ...prev, logo_url: data.webpKey }));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading logo:", error);
-      setError('Failed to upload logo. Please try again.');
+      setError(error.message || 'Failed to upload logo. Please try again.');
     } finally {
       setUploadingLogo(false);
     }

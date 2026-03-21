@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Image as ImageIcon, Video as VideoIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export function LazyImage({ photoKey, alt, className }: { photoKey?: string | null; alt: string; className?: string }) {
+export function LazyImage({ photoKey, alt, className, imgClassName, isVideo = false, controls = false }: { photoKey?: string | null; alt: string; className?: string, imgClassName?: string, isVideo?: boolean, controls?: boolean }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState(false);
   const [src, setSrc] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export function LazyImage({ photoKey, alt, className }: { photoKey?: string | nu
           setError(true);
         }
       } catch (error) {
-        console.error("Failed to fetch image URL", error);
+        console.error("Failed to fetch media URL", error);
         setError(true);
       }
     };
@@ -31,9 +31,9 @@ export function LazyImage({ photoKey, alt, className }: { photoKey?: string | nu
     return (
       <div className={cn("relative overflow-hidden bg-zinc-200 dark:bg-zinc-800 flex flex-col items-center justify-center p-4 text-center", className)}>
         <div className="w-10 h-10 rounded-full bg-zinc-300 dark:bg-zinc-700 flex items-center justify-center mb-2">
-          <ImageIcon className="w-5 h-5 text-zinc-400" />
+          {isVideo ? <VideoIcon className="w-5 h-5 text-zinc-400" /> : <ImageIcon className="w-5 h-5 text-zinc-400" />}
         </div>
-        <span className="text-zinc-400 text-xs font-medium">{error ? 'Failed to load' : 'No image'}</span>
+        <span className="text-zinc-400 text-xs font-medium">{error ? 'Failed to load' : (isVideo ? 'No video' : 'No image')}</span>
         {error && (
           <button 
             onClick={() => window.location.reload()}
@@ -49,17 +49,38 @@ export function LazyImage({ photoKey, alt, className }: { photoKey?: string | nu
   return (
     <div className={cn("relative overflow-hidden bg-zinc-200 dark:bg-zinc-800", className)}>
       {src && (
-        <img
-          src={src}
-          alt={alt}
-          loading="lazy"
-          onLoad={() => setIsLoaded(true)}
-          className={cn(
-            "w-full h-full object-cover transition-all duration-700",
-            isLoaded ? "opacity-100 blur-0 scale-100" : "opacity-0 blur-md scale-105",
-            "group-hover:scale-105"
-          )}
-        />
+        isVideo ? (
+          <video
+            src={src}
+            muted={!controls}
+            loop
+            playsInline
+            controls={controls}
+            autoPlay={controls}
+            onLoadedData={() => setIsLoaded(true)}
+            onMouseEnter={!controls ? (e) => e.currentTarget.play() : undefined}
+            onMouseLeave={!controls ? (e) => e.currentTarget.pause() : undefined}
+            className={cn(
+              "w-full h-full transition-all duration-700",
+              imgClassName || "object-cover",
+              isLoaded ? "opacity-100 blur-0 scale-100" : "opacity-0 blur-md scale-105",
+              !controls && "group-hover:scale-105"
+            )}
+          />
+        ) : (
+          <img
+            src={src}
+            alt={alt}
+            loading="lazy"
+            onLoad={() => setIsLoaded(true)}
+            className={cn(
+              "w-full h-full transition-all duration-700",
+              imgClassName || "object-cover",
+              isLoaded ? "opacity-100 blur-0 scale-100" : "opacity-0 blur-md scale-105",
+              "group-hover:scale-105"
+            )}
+          />
+        )
       )}
       {!isLoaded && (
         <div className="absolute inset-0 flex items-center justify-center">
